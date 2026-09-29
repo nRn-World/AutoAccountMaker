@@ -26,3 +26,6 @@ Screenshots/
 .DS_Store
 Thumbs.db
 metadata.json
+
+# Verktyg som används lokalt för att ta bilder
+make-assets.mjs

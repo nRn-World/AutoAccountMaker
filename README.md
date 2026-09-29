@@ -6,6 +6,20 @@ en temporär adress och loggar in — i ett klick.
 **Gratisversion:** en automatisk registrering var tredje timme.
 **Pro:** tar bort väntet.
 
+![AutoAccountMaker — hela flödet](docs/demo.gif)
+
+*En riktig körning mot tilläggets egen testsida. Kontot skapas, verifieras och
+loggas in — du klickar en gång.*
+
+<p align="center">
+  <img src="docs/filled-form.png" alt="Formuläret ifyllt av tillägget" width="420">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/popup-done.png" alt="Kontot skapat och verifierat" width="290">
+</p>
+
+*Formuläret fylls i fält för fält — efternamn, e-post, bekräftelseadress,
+lösenord, födelsedatum, kön. Grönt markerade fält är ifyllda av tillägget.*
+
 > This project is licensed under the Business Source License 1.1. See [LICENSE](LICENSE).
 
 ---
@@ -112,6 +126,15 @@ Klicka ⚙️ i popupens ikonrad. Sidan är mörk och innehåller tre delar.
 **Avancerat** — hopfällt. Innehåller e-postleverantör och RapidAPI-nyckel.
 Lämnas den gömd behöver du inte bry dig om den.
 
+<img src="docs/settings.png" alt="Inställningssidan: språk, kontovalv och Avancerat" width="640">
+
+<p align="center">
+  <img src="docs/vault.png" alt="Kontovalvet med tre sparade konton" width="480">
+</p>
+
+*Valvet visar webbplats, e-post, användarnamn, verifieringsstatus och lösenord
+(dolda tills du klickar). Exportera till CSV, PDF eller krypterad backup.*
+
 ---
 
 ## Språk
@@ -195,6 +218,7 @@ Testa alltid på en sajt du faktiskt bryr dig om innan du kör flera.
 ## Projektstruktur
 
 ```
+docs/            bilder och GIF till den här filen
 free-build/      Färdig tilläggsmapp — ladda denna i Chrome
 build-free.mjs   Genererar free-build/ ur den privata källträden
 free-src/        Delar som används i bygget
