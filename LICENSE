@@ -1,0 +1,89 @@
+Licensor:             nRn World
+Licensed Work:        AutoAccountMaker
+Additional Use Grant: You may use the Licensed Work for personal, non-commercial
+                      use, including self-hosting it for your own accounts,
+                      study, research, and evaluation. You may not use the
+                      Licensed Work, or any derivative of it, to provide a
+                      product or service to third parties for a fee, to sell
+                      access to it, or to operate it as a commercial service.
+Change Date:          2028-09-29
+Change License:       Apache License, Version 2.0
+
+License text copyright © 2017 MariaDB Corporation Ab, All Rights Reserved.
+"Business Source License" is a trademark of MariaDB Corporation Ab.
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited production
+use.
+
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under the
+terms of the Change License, and the rights granted in the paragraph above
+terminate.
+
+All copies of the original and modified Licensed Work, and derivative works of
+the Licensed Work, are subject to this License. This License applies separately
+for each version of the Licensed Work and the Change Date may vary for each
+version of the Licensed Work released by Licensor.
+
+MariaDB hereby grants you permission to use this License's text to license your
+works, and to refer to it using the trademark "Business Source License", as
+long as you comply with the Covenants of Licensor below.
+
+Covenants of Licensor
+
+In consideration of the right to use this License's text and the "Business
+Source License" name and trademark, Licensor covenants to MariaDB, and to all
+other recipients of the licensed work to be provided by Licensor:
+
+1. To specify as the Change License the GPL Version 2.0 or any later version, or
+   a license that is compatible with GPL Version 2.0 or a later version, where
+   "compatible" means that software provided under the Change License can be
+   included in a program with software provided under GPL Version 2.0 or a later
+   version. Licensor may specify additional Change Licenses without limitation.
+
+2. To either: (a) specify an additional grant of rights to use that does not
+   impose any additional restriction on the right granted in this License, as
+   the Additional Use Grant; or (b) insert the text "None".
+
+3. To specify a Change Date.
+
+4. Not to modify this License in any other way.
+
+Covenants of MariaDB
+
+MariaDB covenants to Licensor to make this License text available to third
+parties as provided in the "Business Source License" notice, and to include the
+text of the Covenants in documentation or materials related to the Licensed
+Work.
+
+Notice
+
+The Business Source License (this document, or the "License") is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
+
+________________________________________________
+
+Copyright (c) 2026 nRn World
+
+Licensed under the Business Source License, Version 1.1 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://mariadb.com/bsl11/
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+
+Change Date: 2028-09-29
+
+On the date above, in accordance with the Business Source License, use of this
+software will be governed by the Apache License, Version 2.0 specified above.

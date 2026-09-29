@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title data-i18n="options.title">Settings — AutoAccountMaker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 20px; color: #10b981; margin-bottom: 4px; }
+    .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+    h2 { font-size: 14px; margin-bottom: 12px; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #cbd5e1; }
+    select, input[type="text"], input[type="password"] {
+      width: 100%;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    select:focus, input:focus { outline: none; border-color: #10b981; }
+    .hint { font-size: 11px; color: #64748b; margin: 6px 0 0; line-height: 1.5; }
+    .hint a { color: #60a5fa; }
+    select.language { max-width: 300px; }
+
+    button, .file-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button:hover, .file-btn:hover { border-color: #475569; }
+    .btn-primary { background: #10b981; border-color: #10b981; color: #fff; }
+    .btn-primary:hover { background: #059669; border-color: #059669; }
+    .btn-danger { color: #fca5a5; border-color: #7f1d1d; }
+    .btn-danger:hover { background: #7f1d1d; color: #fff; }
+
+    /* ---- Valv ---- */
+    .retention {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 14px; padding: 10px 12px;
+      background: #0f172a; border: 1px solid #334155; border-radius: 10px;
+    }
+    .retention label { margin: 0; white-space: nowrap; }
+    .retention select { width: auto; min-width: 90px; }
+    .retention .hint { margin: 0; flex: 1 1 220px; }
+    .count { font-size: 11px; color: #64748b; margin-left: auto; white-space: nowrap; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .include-row {
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 12px; font-size: 12px; color: #cbd5e1;
+    }
+    .include-row input { margin: 0; }
+
+    .account-list { display: flex; flex-direction: column; gap: 10px; }
+    .account-card {
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 10px; padding: 14px;
+    }
+    .account-card .site { font-weight: 600; font-size: 14px; color: #f8fafc; }
+    .account-card .meta { font-size: 11px; color: #64748b; margin: 4px 0 8px; }
+    .field { margin-bottom: 6px; }
+    .field .label { font-size: 9px; text-transform: uppercase; color: #64748b; }
+    .field .value { font-family: monospace; font-size: 12px; word-break: break-all; }
+    .card-actions { display: flex; gap: 6px; margin-top: 10px; }
+    .empty { text-align: center; color: #64748b; padding: 30px; font-size: 13px; }
+
+    /* ---- Avancerat ---- */
+    .advanced > summary {
+      cursor: pointer; font-size: 13px; font-weight: 600; color: #cbd5e1;
+      list-style: none; display: flex; align-items: center; gap: 8px;
+    }
+    .advanced > summary::-webkit-details-marker { display: none; }
+    .advanced > summary::before { content: '▸'; color: #64748b; }
+    .advanced[open] > summary::before { content: '▾'; }
+    .advanced-body { margin-top: 14px; padding-top: 14px; border-top: 1px solid #334155; }
+    .field-block { margin-bottom: 14px; }
+    .field-block:last-child { margin-bottom: 0; }
+
+    .save-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+    .status { font-size: 13px; color: #10b981; opacity: 0; transition: opacity .2s; }
+    .status.visible { opacity: 1; }
+
+    /* ---- Modal ---- */
+    .modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal.open { display: flex; }
+    .modal-box {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 20px; width: 340px;
+    }
+    .modal-box h3 { font-size: 14px; margin-bottom: 12px; }
+    .modal-box input { margin-bottom: 10px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .msg { font-size: 12px; margin-top: 8px; }
+    .msg.err { color: #ef4444; }
+    .msg.ok { color: #10b981; }
+
+    /* ---- Utskrift (PDF) ----
+       #printArea är dold på skärmen och en enda det syns när kunden väljer
+       "Spara som PDF" i printdialogen. Då behöver vi ingen PDF-generator och
+       texten hanteras korrekt av webbläsaren. */
+    #printArea { display: none; }
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      body > *:not(#printArea) { display: none !important; }
+      #printArea { display: block !important; }
+      #printArea h1 { color: #000; font-size: 18pt; margin-bottom: 2pt; }
+      #printArea .p-sub { color: #444; font-size: 9pt; margin-bottom: 12pt; }
+      #printArea table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+      #printArea th, #printArea td {
+        border: 1px solid #999; padding: 4pt 6pt; text-align: left; vertical-align: top;
+      }
+      #printArea th { background: #eee; }
+      #printArea td.mono { font-family: monospace; }
+      #printArea tr { page-break-inside: avoid; }
+      #printArea .p-note { color: #555; font-size: 8pt; margin-top: 12pt; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ <span data-i18n="options.title">Settings</span></h1>
+    <p class="subtitle" data-i18n="options.subtitle">Language, your saved accounts and advanced options.</p>
+
+    <!-- 1. Språk — det enda som visas direkt -->
+    <div class="card">
+      <h2 data-i18n="options.sectionLanguage">Language</h2>
+      <label for="language" data-i18n="options.languageLabel">Interface language</label>
+      <select id="language" class="language"></select>
+      <p class="hint" data-i18n="options.languageHint">All texts in the extension change when you pick a language.</p>
+    </div>
+
+    <!-- 2. Konton -->
+    <div class="card">
+      <h2 data-i18n="vault.title">Account vault</h2>
+      <p class="hint" data-i18n="vault.subtitle" style="margin-bottom:12px;">All automatically created accounts are stored locally in your browser.</p>
+
+      <div class="retention">
+        <label for="retentionLimit" data-i18n="vault.retentionLabel">Keep newest</label>
+        <select id="retentionLimit">
+          <option value="10">10</option>
+          <option value="50">50</option>
+          <option value="199">199</option>
+        </select>
+        <span class="hint" data-i18n="vault.retentionHint">The oldest account is deleted automatically when the limit is reached.</span>
+        <span class="count" id="vaultCount"></span>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn-primary" id="btnRefresh" data-i18n="vault.btnRefresh">Refresh</button>
+        <button id="btnExportCsv" data-i18n="vault.btnExportCsv">Export CSV</button>
+        <button id="btnExportPdf" data-i18n="vault.btnExportPdf">Export PDF</button>
+        <button id="btnExport" data-i18n="vault.btnExport">Export encrypted backup (.enc)</button>
+        <label class="file-btn">
+          <span data-i18n="vault.btnImport">Import backup</span>
+          <input type="file" id="fileImport" accept=".enc,.txt" hidden>
+        </label>
+        <button class="btn-danger" id="btnClearAll" data-i18n="vault.btnClearAll">Clear all</button>
+      </div>
+
+      <div class="include-row">
+        <input type="checkbox" id="includePasswords">
+        <label for="includePasswords" style="margin:0;font-weight:500;" data-i18n="vault.includePasswords">Include passwords in CSV and PDF</label>
+      </div>
+      <p class="hint" data-i18n="vault.exportWarning" style="margin:-6px 0 12px;">CSV and PDF are not encrypted. Anyone who opens the file can read the accounts. The encrypted backup always includes everything.</p>
+
+      <div class="account-list" id="accountList"></div>
+      <div class="empty" id="emptyState" style="display:none;" data-i18n="vault.empty">No accounts saved yet.</div>
+    </div>
+
+    <!-- 3. Avancerat -->
+    <div class="card">
+      <details class="advanced" id="advancedBox">
+        <summary data-i18n="options.advanced">Advanced</summary>
+        <div class="advanced-body">
+          <div class="field-block">
+            <label for="emailProvider" data-i18n="options.providerLabel">Choose provider</label>
+            <select id="emailProvider">
+              <option value="mailtm" data-i18n="options.providerMailtm">mail.tm (free, works instantly)</option>
+              <option value="tempmail" data-i18n="options.providerTempmail">temp-mail.org (via RapidAPI)</option>
+            </select>
+          </div>
+
+          <div class="field-block" id="rapidApiSection" style="display:none;">
+            <label for="rapidApiKey" data-i18n="options.rapidApiLabel">RapidAPI key</label>
+            <input type="password" id="rapidApiKey" data-i18n-placeholder="options.rapidApiPlaceholder" placeholder="Your x-rapidapi-key">
+            <p class="hint">
+              <span data-i18n="options.rapidApiHint">temp-mail.org's API requires a free RapidAPI key.</span>
+              <a href="https://rapidapi.com/Privatix/api/temp-mail" target="_blank" rel="noopener noreferrer" data-i18n="options.rapidApiLink">Get a key here</a>.
+              <span data-i18n="options.rapidApiHint2">Without a key, mail.tm is used automatically.</span>
+            </p>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="save-row">
+      <button id="btnSave" data-i18n="options.save">Save settings</button>
+      <div class="status" id="saveStatus" data-i18n="options.saved">Settings saved!</div>
+    </div>
+  </div>
+
+  <div class="modal" id="cryptoModal">
+    <div class="modal-box">
+      <h3 id="modalTitle" data-i18n="vault.modalPassword">Master password</h3>
+      <input type="password" id="masterPassword" data-i18n-placeholder="vault.modalPlaceholder" placeholder="Enter master password">
+      <div class="msg" id="modalMsg"></div>
+      <div class="modal-actions">
+        <button id="modalCancel" data-i18n="vault.modalCancel">Cancel</button>
+        <button class="btn-primary" id="modalConfirm" data-i18n="vault.modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fylls av PDF-exporten och skrivs ut via printdialogen -->
+  <div id="printArea"></div>
+
+  <script src="i18n.js"></script>
+  <script src="vault.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

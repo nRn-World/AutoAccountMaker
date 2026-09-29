@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoAccountMaker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      padding: 14px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .logo { font-weight: 700; color: #10b981; font-size: 15px; }
+    .logo span { color: #94a3b8; font-weight: 400; font-size: 11px; display: block; }
+    .site-badge {
+      font-size: 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 3px 8px;
+      border-radius: 99px;
+      color: #94a3b8;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-register { background: #10b981; color: #fff; }
+    .btn-register:hover:not(:disabled) { background: #059669; }
+    .btn-login { background: #3b82f6; color: #fff; }
+    .btn-login:hover:not(:disabled) { background: #2563eb; }
+    .btn-verify {
+      width: 100%;
+      background: #8b5cf6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .btn-verify:hover:not(:disabled) { background: #7c3aed; }
+    .btn-vault {
+      width: 100%;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      margin-bottom: 8px;
+    }
+    .btn-vault:hover { color: #f1f5f9; border-color: #475569; }
+    .log {
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px;
+      max-height: 110px;
+      overflow-y: auto;
+      display: none;
+    }
+    .log.visible { display: block; }
+    .log-entry { margin-bottom: 3px; }
+    .log-entry.ok { color: #10b981; }
+    .log-entry.err { color: #ef4444; }
+    .log-entry.info { color: #38bdf8; }
+    .creds {
+      display: none;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    .creds.visible { display: block; }
+    .creds .label { color: #64748b; font-size: 9px; text-transform: uppercase; margin-top: 6px; }
+    .creds .value { word-break: break-all; font-family: monospace; }
+    .footer { margin-top: 10px; text-align: center; }
+    .footer a { color: #64748b; font-size: 10px; text-decoration: none; }
+    .footer a:hover { color: #94a3b8; }
+    .footer-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      font-size: 18px;
+      line-height: 1;
+      padding: 7px 12px;
+      margin: 0 4px;
+      cursor: pointer;
+      filter: grayscale(0.5);
+    }
+    .footer-btn:hover { background: #1e293b; border-color: #334155; filter: none; }
+
+    .free-note {
+      margin-top: 8px;
+      padding: 7px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      font-size: 10px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    /* Steg-för-steg-vy */
+    .steps {
+      display: none;
+      margin: 10px 0;
+      padding: 10px;
+      background: #0a1120;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+    }
+    .steps.visible { display: block; }
+    .steps-title {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.3;
+    }
+    .step-dot {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      border-radius: 50%;
+      border: 2px solid #1e293b;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .step-row.active { color: #e2e8f0; }
+    .step-row.active .step-dot {
+      border-color: #3b82f6;
+      background: #3b82f6;
+      animation: step-pulse 1s ease-in-out infinite;
+    }
+    .step-row.done { color: #94a3b8; }
+    .step-row.done .step-dot { border-color: #10b981; background: #10b981; }
+    .step-row.failed { color: #fca5a5; }
+    .step-row.failed .step-dot { border-color: #ef4444; background: #ef4444; }
+    @keyframes step-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+      50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">⚡ <span data-i18n="app.name">AutoAccountMaker</span><span data-i18n="app.tagline">Automatic account registration</span></div>
+    <div class="site-badge" id="siteBadge">—</div>
+  </div>
+
+  <div class="status" id="statusText" data-i18n="popup.statusIdle">
+    Visit a sign-up page and click the button below. The extension creates the e-mail, fills in the form and verifies for you.
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-register" id="btnRegister" data-i18n="popup.btnRegister">Register automatically</button>
+    <button class="btn-login" id="btnLogin" data-i18n="popup.btnLogin">Log in</button>
+  </div>
+
+  <div class="free-note" id="freeNote" data-i18n="popup.freeTierNote">Free version: one automated sign-up every 3 hours.</div>
+
+  <button class="btn-verify" id="btnVerify" style="display:none;" data-i18n="popup.btnVerify">🔑 Verify code automatically</button>
+
+  
+
+  <div class="steps" id="steps">
+    <div class="steps-title" data-i18n="popup.stepsTitle">Progress</div>
+    <div class="step-row" data-step="1"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepEmail">Creating a temporary e-mail</span></div>
+    <div class="step-row" data-step="2"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepFill">Filling in the form</span></div>
+    <div class="step-row" data-step="3"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSubmit">Submitting the form</span></div>
+    <div class="step-row" data-step="4"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSave">Saving the account</span></div>
+    <div class="step-row" data-step="5"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepMail">Waiting for the verification e-mail</span></div>
+    <div class="step-row" data-step="6"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepVerify">Entering the verification code</span></div>
+    <div class="step-row" data-step="7"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepDone">Done — you can log in</span></div>
+  </div>
+
+  <div class="log" id="logBox"></div>
+  <div class="creds" id="credsBox">
+    <div class="label" data-i18n="popup.credsEmail">E-mail</div>
+    <div class="value" id="dispEmail">—</div>
+    <div class="label" data-i18n="popup.credsPassword">Password</div>
+    <div class="value" id="dispPassword">—</div>
+  </div>
+
+  <div class="footer">
+    <button class="footer-btn" id="btnSettings" data-i18n-title="popup.settings" title="Settings" aria-label="Settings">⚙️</button>
+    <button class="footer-btn" id="btnTest" data-i18n-title="popup.btnTest" title="Open test page">🧪</button>
+  </div>
+<script src="i18n.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

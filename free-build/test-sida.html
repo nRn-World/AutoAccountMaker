@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title data-i18n="test.title">Test — sign-up page with verification</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e3a5f);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transition: opacity 0.3s;
+    }
+    h1 { font-size: 22px; color: #0f172a; margin-bottom: 4px; }
+    .sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; margin-top: 12px; }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: 2px solid #10b981; border-color: #10b981; }
+    .btn {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-blue { background: #3b82f6; color: #fff; }
+    .btn-purple { background: #8b5cf6; color: #fff; }
+    .btn-outline { background: transparent; color: #64748b; border: 1px solid #cbd5e1; }
+    .result {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .result.success { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; display: block; }
+    .result.info { background: #eff6ff; border: 1px solid #3b82f6; color: #1e40af; display: block; }
+    .step-indicator {
+      display: flex; gap: 4px; margin-bottom: 20px; justify-content: center;
+    }
+    .step {
+      width: 32px; height: 4px; border-radius: 2px; background: #e2e8f0; transition: background 0.3s;
+    }
+    .step.active { background: #10b981; }
+    .step.done { background: #3b82f6; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .otp-row {
+      display: flex; gap: 8px; justify-content: center; margin: 16px 0;
+    }
+    .otp-row input {
+      width: 48px; height: 56px; text-align: center; font-size: 24px; font-weight: 700;
+      border: 2px solid #cbd5e1; border-radius: 10px; padding: 0;
+    }
+    .otp-row input:focus { border-color: #8b5cf6; outline: none; }
+    .otp-row input.filled { border-color: #10b981; background: #ecfdf5; }
+    .badge {
+      display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px;
+      background: #f1f5f9; color: #64748b; margin-top: 8px; font-weight: 600;
+    }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px; border: 2px solid #e2e8f0;
+      border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .cred-display {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-top: 12px;
+    }
+    .cred-display .row { font-size: 12px; margin-bottom: 4px; }
+    .cred-display .label { color: #64748b; font-size: 9px; text-transform: uppercase; }
+    .cred-display .value { font-family: monospace; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="card" id="appCard">
+    <h1>🧪 <span data-i18n="test.title">Test — sign-up page with verification</span></h1>
+    <p class="sub" id="stepDesc" data-i18n="test.step1Desc">Use AutoAccountMaker to fill in this form automatically</p>
+
+    <div class="step-indicator">
+      <div class="step active" id="s1"></div>
+      <div class="step" id="s2"></div>
+      <div class="step" id="s3"></div>
+      <div class="step" id="s4"></div>
+      <div class="step" id="s5"></div>
+    </div>
+
+    <!-- Steg 1: Registreringsformulär -->
+    <div class="page active" id="pageRegister">
+      <label for="username" data-i18n="test.usernameLabel">Username</label>
+      <input type="text" id="username" name="username" placeholder="dittnamn" autocomplete="username">
+
+      <label for="email" data-i18n="test.emailLabel">E-mail</label>
+      <input type="email" id="email" name="email" placeholder="du@exempel.se" autocomplete="email">
+
+      <label for="password" data-i18n="test.passwordLabel">Password</label>
+      <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="new-password">
+
+      <label for="confirmPassword" data-i18n="test.confirmPasswordLabel">Confirm password</label>
+      <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" autocomplete="new-password">
+
+      <label for="birthDay" data-i18n="test.birthDateLabel">Date of birth</label>
+      <div style="display:flex;gap:8px;">
+        <select id="birthDay" name="birthDay" style="flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+          <option value="" data-i18n="test.day">Day</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+          <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+          <option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+          <option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
+          <option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option>
+          <option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option>
+          <option value="31">31</option>
+        </select>
+        <select id="birthMonth" name="birthMonth" style="flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+          <option value="" data-i18n="test.month">Month</option>
+          <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option>
+          <option value="5">Maj</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option>
+          <option value="9">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Dec</option>
+        </select>
+        <select id="birthYear" name="birthYear" style="flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+          <option value="" data-i18n="test.year">Year</option>
+          <option value="1990">1990</option><option value="1991">1991</option><option value="1992">1992</option><option value="1993">1993</option>
+          <option value="1994">1994</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option>
+          <option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option>
+          <option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option>
+          <option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option>
+        </select>
+      </div>
+
+      <label for="gender" data-i18n="test.genderLabel">Gender</label>
+      <select id="gender" name="gender" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
+        <option value="" data-i18n="test.pickGender">Choose gender</option>
+        <option value="male" data-i18n="test.male">Male</option>
+        <option value="female" data-i18n="test.female">Female</option>
+      </select>
+
+      <button class="btn btn-green" id="btnRegister" data-i18n="test.btnRegister">Create account</button>
+      <button class="btn btn-outline" id="btnGoLogin" style="margin-top:8px;" data-i18n="test.btnToLogin">I already have an account → Log in</button>
+    </div>
+
+    <!-- Steg 2: Verifieringssida (OTP) -->
+    <div class="page" id="pageVerify">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:32px;margin-bottom:8px;">✉️</div>
+        <div style="font-weight:600;color:#0f172a;" data-i18n="test.step2">Step 2: Verify your e-mail</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px;">
+          <span data-i18n="test.step2Desc">We sent a verification code to</span> <strong id="verifyEmail">—</strong>
+        </div>
+        <div class="badge" id="emailBadge" data-i18n="test.waitingMail">mail.tm — waiting for delivery</div>
+      </div>
+
+      <label style="text-align:center;margin-top:16px;" data-i18n="test.otpLabel">Verification code</label>
+      <div class="otp-row" id="otpRow">
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code" class="otp-input" data-otp>
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="off" class="otp-input">
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="off" class="otp-input">
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="off" class="otp-input">
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="off" class="otp-input">
+        <input type="text" maxlength="1" inputmode="numeric" autocomplete="off" class="otp-input">
+      </div>
+
+      <button class="btn btn-purple" id="btnVerify" data-i18n="test.btnVerify">Verify</button>
+      <div class="result" id="verifyResult"></div>
+    </div>
+
+    <!-- Steg 3: Registrering klar -->
+    <div class="page" id="pageSuccess">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:48px;margin-bottom:8px;">✅</div>
+        <div style="font-weight:700;font-size:18px;color:#065f46;" data-i18n="test.successTitle">Registration done!</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px;" data-i18n="test.successSub">
+          Your account has been created and verified.
+        </div>
+      </div>
+      <div class="cred-display" id="successCreds"></div>
+      <button class="btn btn-blue" id="btnGoLogin2" data-i18n="test.btnContinueLogin">Continue to log in</button>
+    </div>
+
+    <!-- Steg 4: Inloggningsformulär -->
+    <div class="page" id="pageLogin">
+      <label for="loginEmail" data-i18n="test.emailLabel">E-mail</label>
+      <input type="email" id="loginEmail" name="email" placeholder="du@exempel.se" autocomplete="email">
+
+      <label for="loginPassword" data-i18n="test.passwordLabel">Password</label>
+      <input type="password" id="loginPassword" name="password" placeholder="••••••••" autocomplete="current-password">
+
+      <button class="btn btn-blue" id="btnLogin" data-i18n="test.btnLoginSubmit">Log in</button>
+      <button class="btn btn-outline" id="btnGoRegister" style="margin-top:8px;" data-i18n="test.backToRegister">← Create a new account</button>
+    </div>
+
+    <!-- Steg 5: Inloggad -->
+    <div class="page" id="pageDashboard">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:48px;margin-bottom:8px;">🎉</div>
+        <div style="font-weight:700;font-size:18px;color:#065f46;" data-i18n="test.dashboardTitle">You are logged in</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px;" data-i18n="test.dashboardSub">
+          The extension filled in the saved credentials and the login was accepted.
+        </div>
+      </div>
+      <div class="cred-display" id="dashboardCreds"></div>
+      <button class="btn btn-outline" id="btnSignOut" data-i18n="test.signOut">Sign out</button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <!--
+    content.js laddas här som vanligt sidskript. Chrome tillåter inte
+    chrome.scripting.executeScript på tilläggets egna sidor
+    ("Cannot access contents of url chrome-extension://..."), så utan detta
+    svarar popupens meddelanden inte alls och registreringen på testsidan
+    misslyckas. Som sidskript registrerar samma onMessage-lyssnare som
+    content scriptet gör på vanliga webbsidor.
+  -->
+  <script src="i18n.js"></script>
+  <script src="content.js"></script>
+  <script src="test-sida.js"></script>
+</body>
+</html>
