@@ -1,0 +1,87 @@
+<!-- sizes: 1280x800 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A form filled in</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f1f5f9; color: #0f172a;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .wrap { padding: 64px; width: 100%; }
+  .card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.10);
+    padding: 34px 38px; width: 780px;
+  }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+  .row { display: flex; gap: 14px; margin-bottom: 14px; }
+  label { color: #475569; display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
+  input[type=text], input[type=email], input[type=password] {
+    background: #fff; border: 1.5px solid #10b981; border-radius: 7px;
+    color: #0f172a; font-family: inherit; font-size: 14px;
+    padding: 9px 11px; width: 100%;
+  }
+  input[type=password] { border-color: #cbd5e1; }
+  .country { border-color: #10b981; }
+  .check { align-items: center; display: flex; font-size: 14px; gap: 11px; margin-top: 24px; }
+  .box {
+    background: #fff; border: 1.5px solid #94a3b8; border-radius: 4px;
+    flex: none; height: 19px; width: 19px;
+  }
+  .you { color: #b45309; font-size: 12.5px; margin-left: 4px; white-space: nowrap; }
+  .submit-row { align-items: center; display: flex; gap: 14px; margin-top: 26px; }
+  .submit {
+    background: #10b981; border: none; border-radius: 7px; color: #fff;
+    font-family: inherit; font-size: 15px; font-weight: 600; padding: 11px 20px;
+  }
+  .legend { margin-top: 30px; }
+  .dot { background: #10b981; border-radius: 3px; display: inline-block; height: 12px; margin-right: 8px; vertical-align: -1px; width: 12px; }
+  .dot.grey { background: #94a3b8; }
+  .cap { color: #64748b; font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+  <div class="card">
+    <h2>Create your account</h2>
+    <div class="sub">Every green field was filled in by the extension.</div>
+
+    <div class="row">
+      <div style="flex:1"><label>First name</label><input type="text" value="Maria"></div>
+      <div style="flex:1"><label>Last name</label><input type="text" value="Lindqvist"></div>
+    </div>
+    <div class="row">
+      <div style="flex:1"><label>E mail</label><input type="email" value="maria.lindqvist@example.com"></div>
+      <div style="flex:1"><label>Username</label><input type="text" value="mlindqvist"></div>
+    </div>
+    <div class="row">
+      <div style="flex:1"><label>Password</label><input type="password" value="...................."></div>
+      <div style="flex:1"><label>Country</label><input type="text" class="country" value="Sweden"></div>
+    </div>
+
+    <div class="check">
+      <span class="box"></span>
+      <span>I agree to the Terms of Service</span>
+      <span class="you">you tick this</span>
+    </div>
+
+    <div class="submit-row">
+      <button class="submit">Create account</button>
+      <span class="you">you press this</span>
+    </div>
+
+    <div class="legend">
+      <div class="cap"><span class="dot"></span>Filled in for you, you can still change anything</div>
+      <div class="cap" style="margin-top:6px;"><span class="dot grey"></span>Left to you on purpose</div>
+    </div>
+  </div>
+  </div>
+</body>
+</html>

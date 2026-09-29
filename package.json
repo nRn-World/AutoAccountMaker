@@ -1,0 +1,14 @@
+{
+  "name": "autoaccountmaker-form-filler",
+  "version": "1.12.0",
+  "private": true,
+  "description": "Fills in web forms from details you saved. The user reviews and submits. Nothing is sent anywhere.",
+  "license": "SEE LICENSE IN store-manual/LICENCE.md",
+  "author": "nRn World",
+  "type": "module",
+  "scripts": {
+    "build": "node build-store.mjs",
+    "test": "node test-store-build.cjs",
+    "pack": "node pack.mjs && node verify-zip.mjs"
+  }
+}

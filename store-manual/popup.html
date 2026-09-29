@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoAccountMaker Form Filler</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+    }
+    header {
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px 10px;
+    }
+    header h1 { flex: 1; font-size: 13px; font-weight: 600; }
+    .icon-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+    }
+    .icon-btn:hover { background: #334155; color: #fff; }
+    main { padding: 12px 14px 14px; }
+    .status {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.45;
+      margin-bottom: 10px;
+      padding: 9px 11px;
+    }
+    .status.ok { border-color: #10b981; color: #6ee7b7; }
+    .status.error { border-color: #ef4444; color: #fca5a5; }
+    .row { display: flex; gap: 8px; }
+    button.fill {
+      background: #10b981;
+      border: none;
+      border-radius: 8px;
+      color: #04211a;
+      cursor: pointer;
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 12px;
+    }
+    button.fill:hover { background: #34d399; }
+    button.fill:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+    button.fill.secondary { background: #1e293b; border: 1px solid #334155; color: #cbd5e1; }
+    button.fill.secondary:hover { background: #334155; color: #fff; }
+    .note {
+      color: #64748b;
+      font-size: 10.5px;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+    #log {
+      font-size: 11px;
+      line-height: 1.5;
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .log-line { color: #94a3b8; padding: 1px 0; word-break: break-word; }
+    .log-line.ok { color: #6ee7b7; }
+    .log-line.warn { color: #fbbf24; }
+    .log-line.error { color: #fca5a5; }
+    select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 11px;
+      padding: 3px 6px;
+    }
+    footer {
+      border-top: 1px solid #1e293b;
+      color: #64748b;
+      font-size: 10px;
+      line-height: 1.5;
+      padding: 9px 14px 11px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="popup.title">AutoAccountMaker</h1>
+    <select id="languageSelect" title="Language"></select>
+    <button class="icon-btn" id="btnSettings" data-i18n="popup.settings">Settings</button>
+  </header>
+
+  <main>
+    <div class="status" id="status">Loading</div>
+
+    <div class="row">
+      <button class="fill" id="btnFill" data-i18n="popup.fillForm">Fill the form</button>
+      <button class="fill secondary" id="btnLogin" data-i18n="popup.fillLogin">Fill a login</button>
+    </div>
+
+    <p class="note" data-i18n="popup.disclaimer">
+      Fills in the details you saved in Settings. You tick any checkboxes and
+      press submit yourself.
+    </p>
+
+    <div id="log"></div>
+  </main>
+
+  <footer>
+    <span data-i18n="popup.footerStore">
+      Free and open source. Nothing you type leaves your browser.
+    </span>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -10,10 +10,124 @@ const dispEmail = document.getElementById('dispEmail');
 const dispPassword = document.getElementById('dispPassword');
 const stepsBox = document.getElementById('steps');
 const btnSettings = document.getElementById('btnSettings');
+const licenseStatus = document.getElementById('licenseStatus');
+const licenseStatusText = document.getElementById('licenseStatusText');
+const licenseCooldown = document.getElementById('licenseCooldown');
+const licenseCooldownText = document.getElementById('licenseCooldownText');
+const licensePro = document.getElementById('licensePro');
+const licenseResult = document.getElementById('licenseResult');
+const btnBuyPro = document.getElementById('btnBuyPro');
+const inputLicenseKey = document.getElementById('inputLicenseKey');
+const btnActivateLicense = document.getElementById('btnActivateLicense');
+const btnDeactivateLicense = document.getElementById('btnDeactivateLicense');
 
 let currentTab = null;
 let pageReady = false;
+let isPro = false;
 let cooldownUntil = 0;
+let licenseTimer = null;
+
+/**
+ * Mirrors the cooldown in the interface. A Pro user never sees a blocked state
+ * at all, only a small "Pro active" line, while the free view gets a clear
+ * warning when the lock is shut, so it is obvious why the button is dead.
+ */
+function renderLicenseState(remainingMs = Math.max(0, cooldownUntil - Date.now())) {
+  const licenseEntry = document.getElementById('licenseEntry');
+  const btnBuy = document.getElementById('btnBuyPro');
+
+  if (isPro) {
+    licenseStatus.className = 'license-status pro';
+    licenseStatusText.textContent = t('popup.licenseProActive');
+    licenseCooldown.style.display = 'none';
+    licensePro.style.display = 'flex';
+    // Already Pro: "Already have a license key?" is meaningless here, and the
+    // buy button must not be shown to someone who already paid.
+    if (licenseEntry) licenseEntry.style.display = 'none';
+    if (btnBuy) btnBuy.style.display = 'none';
+    btnRegister.disabled = false;
+    return;
+  }
+
+  licensePro.style.display = 'none';
+  if (licenseEntry) licenseEntry.style.display = 'block';
+  if (btnBuy) btnBuy.style.display = 'block';
+
+  if (remainingMs > 0) {
+    cooldownUntil = Date.now() + remainingMs;
+    licenseStatus.className = 'license-status blocked';
+    licenseStatusText.textContent = t('popup.licenseFreeBlocked');
+    licenseCooldown.style.display = 'block';
+    licenseCooldownText.textContent = t('popup.licenseCooldownText', formatRemaining(remainingMs));
+    btnRegister.disabled = true;
+  } else {
+    cooldownUntil = 0;
+    licenseStatus.className = 'license-status ready';
+    licenseStatusText.textContent = t('popup.licenseFreeReady');
+    licenseCooldown.style.display = 'none';
+    // The button is not locked here: the click goes on to a real check in the
+    // background, so a stale button cannot lock out an entitled user.
+    if (!pageReady || currentTab?.id) btnRegister.disabled = false;
+  }
+}
+
+async function refreshLicenseState() {
+  try {
+    const res = await sendMsg({ action: 'getLicenseStatus' });
+    if (!res?.success) return;
+    isPro = res.isPro === true;
+    if (isPro) {
+      renderLicenseState(0);
+      return;
+    }
+    renderLicenseState(res.canStart?.remainingMs || 0);
+  } catch (e) {
+    // Better to show nothing than to lock the user out on a broken check.
+    console.warn('[AAM License] refresh failed:', e);
+  }
+}
+
+function startLicenseCountdown() {
+  if (licenseTimer) clearInterval(licenseTimer);
+  licenseTimer = setInterval(() => {
+    if (isPro) return;
+    const remaining = Math.max(0, cooldownUntil - Date.now());
+    if (remaining <= 0) {
+      clearInterval(licenseTimer);
+      licenseTimer = null;
+      renderLicenseState(0);
+      return;
+    }
+    renderLicenseState(remaining);
+  }, 30000);
+}
+
+btnActivateLicense?.addEventListener('click', async () => {
+  const key = inputLicenseKey.value;
+  licenseResult.className = 'license-hint';
+  licenseResult.textContent = t('popup.licenseChecking');
+  const res = await sendMsg({ action: 'activateLicense', key });
+  if (res?.success) {
+    isPro = true;
+    licenseResult.className = 'license-hint success';
+    licenseResult.textContent = t('popup.licenseActivated');
+    inputLicenseKey.value = '';
+    renderLicenseState(0);
+  } else {
+    licenseResult.className = 'license-hint error';
+    licenseResult.textContent = res?.error || t('popup.licenseInvalid');
+  }
+});
+
+btnDeactivateLicense?.addEventListener('click', async () => {
+  await sendMsg({ action: 'deactivateLicense' });
+  isPro = false;
+  await refreshLicenseState();
+});
+
+if (btnBuyPro && typeof KOFI_URL === 'string' && KOFI_URL) {
+  btnBuyPro.href = KOFI_URL;
+}
 
 // The steps of the registration flow, in order.
 const STEP_KEYS = ['stepEmail', 'stepFill', 'stepSubmit', 'stepSave', 'stepMail', 'stepVerify', 'stepDone'];
@@ -142,6 +256,34 @@ function getSiteKey(url) {
   }
 }
 
+/**
+ * Returns the active tab in the frontmost normal browser window.
+ * Works correctly from a side-panel context where currentWindow:true
+ * would return the panel's own window rather than the user's window.
+ */
+async function getActiveTab() {
+  try {
+    // Try lastFocusedWindow first — works in most cases including side panel
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab?.url && !tab.url.startsWith('about:') && !tab.url.startsWith('chrome://newtab')) {
+      return tab;
+    }
+    // Fallback: iterate normal windows and pick the active tab
+    const wins = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] });
+    wins.sort((a, b) => (b.focused ? 1 : 0) - (a.focused ? 1 : 0));
+    for (const win of wins) {
+      const active = win.tabs?.find((t) => t.active);
+      if (active?.url && !active.url.startsWith('chrome://') && active.url !== 'about:blank') {
+        return active;
+      }
+    }
+    return tab ?? null;
+  } catch {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab ?? null;
+  }
+}
+
 async function ensureContentScript(tabId) {
   const ping = await sendToTab(tabId, { action: 'ping' });
   return !!ping?.pong;
@@ -265,9 +407,15 @@ async function init() {
   await I18N.initI18n();
 
   // License and cooldown must be visible right away, also on chrome:// pages.
+  await refreshLicenseState();
+  startLicenseCountdown();
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentTab = tab;
+  // In the side panel context, currentWindow: true refers to the panel's own
+  // window — not the browser window the user is looking at. So we query all
+  // windows and pick the active tab from the last focused normal window.
+  currentTab = await getActiveTab();
+  const tab = currentTab;
+
 
   if (!tab?.url || tab.url.startsWith('chrome://')) {
     siteBadge.textContent = t('popup.siteNone');
@@ -307,6 +455,11 @@ async function init() {
 }
 
 btnRegister.addEventListener('click', async () => {
+  // Always re-detect the active tab at click time — in the side panel the
+  // cached currentTab can be stale if the user navigated or reloaded.
+  currentTab = await getActiveTab();
+  pageReady = currentTab ? isUsableTab(currentTab.url) : false;
+
   if (!pageReady || !currentTab?.id) {
     log(t('popup.logPageFirst'), 'error');
     return;
@@ -323,9 +476,10 @@ btnRegister.addEventListener('click', async () => {
   const profileRes = await sendMsg({ action: 'getNewProfile' });
   if (!profileRes?.success) {
     // The cooldown is rejected here, so mirror it in the interface with a
-// The cooldown is rejected here, so show the time left and lock the button.
+    // countdown and the buy button, not a generic "could not create a profile".
     if (profileRes?.reason === 'cooldown') {
-      cooldownUntil = Date.now() + (profileRes.remainingMs || 0);
+      isPro = false;
+      renderLicenseState(profileRes.remainingMs || 0);
       log(t('popup.licenseCooldownText', profileRes.remainingLabel || ''), 'error');
       statusText.textContent = t('popup.licenseFreeBlocked');
       stepsBox.classList.remove('visible');
@@ -445,9 +599,6 @@ btnRegister.addEventListener('click', async () => {
   }
 
   renderSteps(2);
-  // The submit click happens 800 ms after the fields are filled.
-  await new Promise((r) => setTimeout(r, 1000));
-  renderSteps(3);
 
   const siteKey = currentTab.url.startsWith('chrome-extension://')
     ? 'test-sida.local'
@@ -468,31 +619,26 @@ btnRegister.addEventListener('click', async () => {
     createdAt: new Date().toISOString(),
   };
 
-  const saveRes = await sendMsg({ action: 'saveAccount', account });
+  await sendMsg({ action: 'saveAccount', account });
   await sendMsg({ action: 'startPendingVerification', tabId: currentTab.id, account });
-  log(t('popup.logSaved'), 'success');
-  if (saveRes?.removed > 0) {
-    log(t('vault.msgTrimmed', saveRes.accounts.length), 'info');
-  }
-  renderSteps(4);
 
   dispEmail.textContent = profile.email;
   dispPassword.textContent = profile.password;
   credsBox.classList.add('visible');
+
+  // Do NOT submit. Prompt the user to review, accept terms and click Next / Create themselves!
+  statusText.textContent = 'Uppgifterna är ifyllda! Acceptera sajtens villkor och klicka på Nästa / Skapa konto.';
+  log('✅ Uppgifterna har fyllts i formuläret.', 'success');
+  log('👉 Acceptera eventuella villkor och klicka på Nästa / Skapa konto på sidan.', 'info');
+
+  btnRegister.disabled = false;
+  btnLogin.disabled = false;
   btnVerify.style.display = 'block';
+  btnVerify.disabled = false;
+  btnVerify.textContent = '🔑 Hämta & fyll i verifieringskod';
 
-  // Now the extension does the rest: look for the verification mail (or read
-  // the code on the test page), fill it in and submit. The user does not click.
-  statusText.textContent = t('popup.statusRegistered');
-  log(t('popup.logVerifyStart'), 'info');
-  renderSteps(5);
-
-  const verifyResult = await sendMsgWaitingForSlot({
-    action: 'autoVerify',
-    account,
-    tabId: currentTab.id,
-    baseUrl: currentTab.url,
-  });
+  // Wait for user to click Next on the page and then click Verify code when ready
+  return;
 
   if (verifyResult?.success) {
     completeSteps();
@@ -621,7 +767,7 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   if (!lang || lang === I18N.language) return;
 
   I18N.applyTranslations(document, lang);
-  cooldownUntil = 0;
+  renderLicenseState(isPro ? 0 : Math.max(0, cooldownUntil - Date.now()));
   if (currentTab) {
     siteBadge.textContent = currentTab.url?.startsWith('chrome-extension://')
       ? t('popup.statusTestsite')

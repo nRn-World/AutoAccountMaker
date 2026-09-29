@@ -1,0 +1,53 @@
+<!-- sizes: 1280x800 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What it will not do</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; height: 800px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0b1220; color: #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .wrap { padding: 72px; width: 100%; }
+  .eyebrow { color: #10b981; font-size: 14px; font-weight: 700; letter-spacing: 3.2px; text-transform: uppercase; }
+  h2 { font-size: 44px; font-weight: 800; line-height: 1.12; margin-top: 14px; }
+  h2 span { color: #34d399; }
+  .grid { display: grid; gap: 16px 22px; grid-template-columns: 1fr 1fr; margin-top: 38px; }
+  .item {
+    align-items: flex-start; background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(51, 65, 85, 0.9); border-radius: 11px;
+    display: flex; gap: 14px; padding: 17px 19px;
+  }
+  .x {
+    align-items: center; background: rgba(239, 68, 68, 0.13);
+    border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 50%;
+    color: #f87171; display: flex; flex: none; font-size: 15px; font-weight: 700;
+    height: 28px; justify-content: center; margin-top: 1px; width: 28px;
+  }
+  .txt { font-size: 17px; line-height: 1.42; }
+  .foot { color: #475569; font-size: 15px; margin-top: 34px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Straight about the limits</div>
+    <h2>What it <span>will not do</span></h2>
+
+    <div class="grid">
+      <div class="item"><span class="x">✕</span><span class="txt">It never presses a form's own submit button</span></div>
+      <div class="item"><span class="x">✕</span><span class="txt">It never ticks a terms, privacy or consent checkbox for you</span></div>
+      <div class="item"><span class="x">✕</span><span class="txt">It never clicks away cookie or consent banners</span></div>
+      <div class="item"><span class="x">✕</span><span class="txt">It never creates e mail addresses, and has no e mail provider</span></div>
+      <div class="item"><span class="x">✕</span><span class="txt">It never invents a name, an address, a date of birth or a password</span></div>
+      <div class="item"><span class="x">✕</span><span class="txt">It sends nothing over the network. There is no server</span></div>
+    </div>
+
+    <div class="foot">Accepting a legal agreement, and pressing submit, are things a person does. So they are things this extension leaves to you.</div>
+  </div>
+</body>
+</html>

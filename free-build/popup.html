@@ -6,7 +6,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 340px;
+      width: 100%;
+      min-width: 320px;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #0f172a;
       color: #f1f5f9;
@@ -34,6 +35,19 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .btn-close {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+      margin-left: 6px;
+      flex: none;
+      transition: color 0.15s;
+    }
+    .btn-close:hover { color: #f87171; }
     .status {
       background: #1e293b;
       border: 1px solid #334155;
@@ -125,23 +139,72 @@
     }
     .footer-btn:hover { background: #1e293b; border-color: #334155; filter: none; }
 
-    .free-note {
-      display: block;
-      margin-top: 8px;
-      padding: 7px 10px;
+    /* License and free tier */
+    .license {
+      margin-top: 10px;
+      padding: 9px 10px;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 8px;
-      font-size: 10px;
-      color: #64748b;
+      font-size: 11px;
+    }
+    .license-status { color: #94a3b8; }
+    .license-status.ready { color: #10b981; }
+    .license-status.blocked { color: #f59e0b; }
+    .license-status.pro { color: #fbbf24; }
+    .license-cooldown-text { margin: 0 0 8px; color: #fbbf24; font-weight: 600; }
+    .license-buy {
+      display: block;
       text-align: center;
+      background: #ffdd00;
+      color: #1c1917;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-weight: 700;
       text-decoration: none;
-      transition: border-color 0.15s, color 0.15s;
+      margin-bottom: 8px;
     }
-    .free-note:hover {
+    .license-buy:hover { background: #fde047; }
+    .license-entry summary {
+      cursor: pointer;
+      color: #64748b;
+      font-size: 10px;
+      margin-bottom: 6px;
+    }
+    .license-input-row { display: flex; gap: 6px; }
+    .license-input-row input {
+      flex: 1;
+      min-width: 0;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
       color: #e2e8f0;
-      border-color: #10b981;
+      padding: 5px 7px;
+      font-size: 11px;
     }
+    .license-input-row button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .license-hint { margin: 6px 0 0; color: #64748b; font-size: 10px; }
+    .license-hint.error { color: #f87171; }
+    .license-hint.success { color: #10b981; }
+    .license-pro { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .license-deactivate {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .license-deactivate:hover { color: #f87171; border-color: #7f1d1d; }
 
     /* Step by step view */
     .steps {
@@ -201,8 +264,7 @@
 </head>
 <body>
   <div class="header">
-    <div class="logo">⚡ <span data-i18n="app.name">AutoAccountMaker</span><span data-i18n="app.tagline">Automatic account registration</span></div>
-    <div class="site-badge" id="siteBadge">—</div>
+    <div class="logo"><span data-i18n="app.name">AutoAccountMaker</span><span data-i18n="app.tagline">Automatic account registration</span></div>
   </div>
 
   <div class="status" id="statusText" data-i18n="popup.statusIdle">
@@ -214,11 +276,39 @@
     <button class="btn-login" id="btnLogin" data-i18n="popup.btnLogin">Log in</button>
   </div>
 
-  <a class="free-note" id="freeNote" href="https://ko-fi.com/s/da557f599c" target="_blank" rel="noopener noreferrer" data-i18n="popup.freeTierNote">Free version: one automated sign-up every 3 hours.</a>
-
   <button class="btn-verify" id="btnVerify" style="display:none;" data-i18n="popup.btnVerify">🔑 Verify code automatically</button>
 
-  
+  <div class="license" id="licenseBox">
+    <div class="license-status" id="licenseStatus">
+      <span id="licenseStatusText" data-i18n="popup.licenseFreeReady">✅ Free run available</span>
+    </div>
+
+    <div class="license-cooldown" id="licenseCooldown" style="display:none;">
+      <p class="license-cooldown-text" id="licenseCooldownText"></p>
+    </div>
+
+    <!-- The buy button and the key field sit OUTSIDE the cooldown panel. They
+         used to be hidden until the free time ran out, which meant a customer
+         who had already paid could not see where to enter their key. -->
+      <a class="license-buy" id="btnBuyPro" href="https://ko-fi.com/s/da557f599c" target="_blank" rel="noopener noreferrer">
+      <span data-i18n="popup.licenseBuy">☕ Buy Pro — unlimited use</span>
+    </a>
+
+    <!-- open: the field must be visible straight away, without a click. -->
+    <details class="license-entry" id="licenseEntry" open>
+      <summary data-i18n="popup.licenseHaveKey">Already have a license key?</summary>
+      <div class="license-input-row">
+        <input type="text" id="inputLicenseKey" placeholder="AAM-PRO-XXXX-XXXX-XXXX" maxlength="30" autocomplete="off" spellcheck="false" />
+        <button type="button" id="btnActivateLicense" data-i18n="popup.licenseActivate">Activate</button>
+      </div>
+      <p class="license-hint" id="licenseResult"></p>
+    </details>
+
+    <div class="license-pro" id="licensePro" style="display:none;">
+      <span data-i18n="popup.licenseProActive">⭐ Pro active — unlimited use</span>
+      <button type="button" class="license-deactivate" id="btnDeactivateLicense" data-i18n="popup.licenseDeactivate">Remove key</button>
+    </div>
+  </div>
 
   <div class="steps" id="steps">
     <div class="steps-title" data-i18n="popup.stepsTitle">Progress</div>
@@ -243,6 +333,8 @@
     <button class="footer-btn" id="btnSettings" data-i18n-title="popup.settings" title="Settings" aria-label="Settings">⚙️</button>
     <button class="footer-btn" id="btnTest" data-i18n-title="popup.btnTest" title="Open test page">🧪</button>
   </div>
+
+<script src="license.js"></script>
 <script src="i18n.js"></script>
 <script src="popup.js"></script>
 </body>

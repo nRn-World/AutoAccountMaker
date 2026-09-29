@@ -3,10 +3,26 @@
  * Improved OTP extraction, badge status, longer polling, more robust flow
  */
 
-// cooldown.js, the free tier rate limit, is loaded into the service worker.
+// license.js holds the signature secret and the Pro checks, so it stays in
+// this private build. Guarded because background.js is also evaluated in a
+// plain Node VM by the tests, where importScripts does not exist.
 if (typeof importScripts === 'function') {
-  importScripts('cooldown.js');
+  try {
+    importScripts('license.js');
+  } catch {
+    try {
+      importScripts('cooldown.js');
+    } catch {}
+  }
 }
+
+// ── Side Panel ─────────────────────────────────────────────────────────────
+// Open popup.html in Chrome's built-in side panel (docked to the browser,
+// stays open while the user interacts with the page).
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch(() => {});
+// ───────────────────────────────────────────────────────────────────────────
 
 function updateBadge(text, color = '#10b981') {
   try {
@@ -1186,6 +1202,35 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   (async () => {
     try {
       switch (request.action) {
+        case 'getLicenseStatus': {
+          const canStart = await canStartRun();
+          const limits = await getFeatureLimits();
+          sendResponse({
+            success: true,
+            isPro: canStart.tier === 'pro',
+            canStart,
+            limits,
+          });
+          break;
+        }
+
+        case 'consumeRunSlot': {
+          const slot = await consumeFreeRunSlot();
+          sendResponse({ success: slot.allowed, ...slot });
+          break;
+        }
+
+        case 'activateLicense': {
+          const res = await activateLicense(request.key);
+          sendResponse(res);
+          break;
+        }
+
+        case 'deactivateLicense': {
+          sendResponse(await deactivateLicense());
+          break;
+        }
+
         case 'getSettings':
           sendResponse({ success: true, settings: await getSettings() });
           break;

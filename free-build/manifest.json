@@ -8,7 +8,9 @@
     "scripting",
     "storage",
     "unlimitedStorage",
-    "tabs"
+    "tabs",
+    "windows",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://api.mail.tm/*",
@@ -17,25 +19,22 @@
     "https://*/*"
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],

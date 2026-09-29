@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoAccountMaker Form Filler, settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span data-i18n="options.title">Settings</span></h1>
+    <p class="subtitle" data-i18n="options.subtitle">Your details, and the interface language.</p>
+
+    <!-- 1. Language -->
+    <div class="card">
+      <h2 data-i18n="options.sectionLanguage">Language</h2>
+      <label for="language" data-i18n="options.languageLabel">Interface language</label>
+      <select id="language" class="language"></select>
+      <p class="hint" data-i18n="options.languageHint">All texts in the extension change when you pick a language.</p>
+    </div>
+
+    <!-- 2. Your details. This is what gets typed into the form. -->
+    <div class="card">
+      <h2 data-i18n="details.title">Your details</h2>
+      <p class="hint" style="margin-bottom:12px;" data-i18n="details.hint">
+        These stay in this browser. Nothing is sent anywhere, and the extension
+        never invents a value for a field you leave empty.
+      </p>
+
+      <div class="grid2">
+        <div>
+          <label for="detFirstName" data-i18n="details.firstName">First name</label>
+          <input type="text" id="detFirstName" autocomplete="given-name">
+        </div>
+        <div>
+          <label for="detLastName" data-i18n="details.lastName">Last name</label>
+          <input type="text" id="detLastName" autocomplete="family-name">
+        </div>
+        <div>
+          <label for="detEmail" data-i18n="details.email">E mail</label>
+          <input type="email" id="detEmail" autocomplete="email">
+        </div>
+        <div>
+          <label for="detUsername" data-i18n="details.username">Username</label>
+          <input type="text" id="detUsername" autocomplete="username">
+        </div>
+        <div>
+          <label for="detPassword" data-i18n="details.password">Password</label>
+          <input type="password" id="detPassword" autocomplete="new-password">
+        </div>
+        <div>
+          <label for="detPhone" data-i18n="details.phone">Phone</label>
+          <input type="tel" id="detPhone" autocomplete="tel">
+        </div>
+        <div>
+          <label for="detAddress" data-i18n="details.address">Street address</label>
+          <input type="text" id="detAddress" autocomplete="street-address">
+        </div>
+        <div>
+          <label for="detCity" data-i18n="details.city">City</label>
+          <input type="text" id="detCity" autocomplete="address-level2">
+        </div>
+        <div>
+          <label for="detZip" data-i18n="details.zip">Postal code</label>
+          <input type="text" id="detZip" autocomplete="postal-code">
+        </div>
+        <div>
+          <label for="detCountry" data-i18n="details.country">Country</label>
+          <input type="text" id="detCountry" placeholder="SE" maxlength="2">
+        </div>
+        <div>
+          <label for="detBirthDate" data-i18n="details.birthDate">Date of birth</label>
+          <input type="text" id="detBirthDate" placeholder="1990-01-31" autocomplete="bday">
+        </div>
+        <div>
+          <label for="detGender" data-i18n="details.gender">Gender</label>
+          <input type="text" id="detGender" placeholder="female">
+        </div>
+        <div>
+          <label for="detCompany" data-i18n="details.company">Company</label>
+          <input type="text" id="detCompany" autocomplete="organization">
+        </div>
+        <div>
+          <label for="detJobTitle" data-i18n="details.jobTitle">Job title</label>
+          <input type="text" id="detJobTitle" autocomplete="organization-title">
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button class="btn-primary" id="btnSave" data-i18n="options.save">Save</button>
+        <div class="status" id="saveStatus" data-i18n="options.saved">Saved</div>
+        <span class="hint" id="filledCount"></span>
+      </div>
+    </div>
+
+    <!-- 3. What this extension will not do, stated up front. -->
+    <div class="card">
+      <h2 data-i18n="limits.title">What it will not do</h2>
+      <ul class="limits">
+        <li data-i18n="limits.noSubmit">It never presses a form's own submit button.</li>
+        <li data-i18n="limits.noConsent">It never ticks a terms, privacy or consent checkbox for you.</li>
+        <li data-i18n="limits.noBanners">It never clicks away cookie or consent banners.</li>
+        <li data-i18n="limits.noAccounts">It never creates e mail addresses or invents a name, address or date of birth.</li>
+        <li data-i18n="limits.noNetwork">It sends nothing over the network. There is no server.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="details.problems">Known limits</h2>
+      <ul class="limits">
+        <li data-i18n="details.problem1">Every site is different, so an unusual layout may be filled only partly. The popup lists the fields it could not fill.</li>
+        <li data-i18n="details.problem2">CAPTCHAs and proof of work are not solved. Nothing here bypasses them.</li>
+        <li data-i18n="details.problem3">Sites that require a one time code by e mail need you to paste the code in yourself.</li>
+        <li data-i18n="details.problem4">Filled fields are marked in green so you can see what was typed before you submit.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -462,11 +462,16 @@ function checkConsentCheckboxes() {
       box.closest?.('label')?.innerText || box.getAttribute('aria-label') || box.id || ''
     ).trim();
 
-    // Is the field explicitly required, or is this about terms and consent?
     const needed = box.required === true || termsWords.test(label);
     if (!needed) continue;
 
-    box.click();
+    // Highlight the checkbox so the user easily sees what to accept, but DO NOT click it
+    box.classList.add(HIGHLIGHT_CLASS);
+    try {
+      box.style.outline = '2px solid #f59e0b';
+      box.style.boxShadow = '0 0 6px #f59e0b';
+    } catch {}
+
     out.push({
       label: label.replace(/\s+/g, ' ').slice(0, 60) || box.id || 'checkbox',
       required: box.required === true,
@@ -800,13 +805,8 @@ function fillOtpCode(code, autoSubmit = true) {
   }
 
   let submitted = false;
-  if (autoSubmit) {
-    const btn = findVerifyButton();
-    if (btn) {
-      setTimeout(() => btn.click(), 800);
-      submitted = true;
-    }
-  }
+  // User explicitly clicks Next / Create account themselves
+  /* autoSubmit disabled */
 
   return { success: true, submitted, digits: otp.length, fieldType: found.type };
 }
@@ -1000,14 +1000,8 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     }
   }
 
-  let submitted = false;
-  if (autoSubmit) {
-    const btn = findSubmitButton(mode);
-    if (btn) {
-      setTimeout(() => btn.click(), 800);
-      submitted = true;
-    }
-  }
+  // Auto-submit removed: user must click Next / Create account themselves.
+  const submitted = false;
 
   return { filled, submitted, mode, missing, noForm: false, report, checkboxes };
 }
