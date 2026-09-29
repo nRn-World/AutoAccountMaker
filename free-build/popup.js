@@ -627,15 +627,15 @@ btnRegister.addEventListener('click', async () => {
   credsBox.classList.add('visible');
 
   // Do NOT submit. Prompt the user to review, accept terms and click Next / Create themselves!
-  statusText.textContent = 'Uppgifterna är ifyllda! Acceptera sajtens villkor och klicka på Nästa / Skapa konto.';
-  log('✅ Uppgifterna har fyllts i formuläret.', 'success');
-  log('👉 Acceptera eventuella villkor och klicka på Nästa / Skapa konto på sidan.', 'info');
+  statusText.textContent = t('popup.statusFormFilled');
+  log('✅ ' + t('popup.logFormFilled'), 'success');
+  log('👉 ' + t('popup.logReviewAndSubmit'), 'info');
 
   btnRegister.disabled = false;
   btnLogin.disabled = false;
   btnVerify.style.display = 'block';
   btnVerify.disabled = false;
-  btnVerify.textContent = '🔑 Hämta & fyll i verifieringskod';
+  btnVerify.textContent = t('popup.btnFetchOtp');
 
   // Wait for user to click Next on the page and then click Verify code when ready
   return;

@@ -40,3 +40,6 @@ metadata.json
 
 # Local tool used to produce the screenshots
 make-assets.mjs
+
+__pycache__/
+*.pyc
