@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * build-free.mjs — genererar gratisversionen av AutoAccountMaker
+ * build-free.mjs, generates the free version of AutoAccountMaker
  *
- * Källträdet i extension/ innehåller licenssigneringshemligheten, som aldrig
- * får publiceras. Det här skriptet bygger därför free-build/ — en gratisversion
- * UTAN nycklar, UTAN Pro-nivå och UTAN hemlighet. Cooldownen (1 registrering
- * per 3 timmar) finns kvar, eftersom det är gratisnivån.
+ * The source tree in extension/ holds the license signing secret, which may
+ * never be published. This script therefore builds free-build/: a free version
+ * with no keys, no Pro tier and no secret. The cooldown (one registration
+ * every three hours) stays, because that is the free tier.
  *
- * Kör:  node build-free.mjs
- * Test:  det efterföljande steget laddar free-build/ i en riktig browser.
+ * Run:  node build-free.mjs
+ * Test:  the next step loads free-build/ in a real browser.
  *
- * Skriptet AVSLUTAR MED ett fel om någon hemlighet finns kvar i utdata. Det är
- * den sista försvarslinjen, inte en formalitet.
+ * The script EXITS WITH AN ERROR if any secret is left in the output. That is
+ * the last line of defense, not a formality.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,25 +22,25 @@ const SRC = path.join(ROOT, 'extension');
 const OUT = path.join(ROOT, 'free-build');
 const FREE_SRC = path.join(ROOT, 'free-src');
 
-// Mönster som ALDRIG får lämna källträdet. Om något av detta hamnar i
-// free-build/ kan vem som helst skapa Pro-nycklar.
+// Patterns that must NEVER leave the source tree. If any of this ends up in
+// free-build/, anyone can mint Pro keys.
 //
-// OBS: här får INTE den faktiska hemligheten skrivas ut. Detta skript versions-
-// sätts, så en hårdkodad hemlighet här vore en läcka precis som den vi försöker
-// stoppa. Vi matchar formen i stället: 64 hex-tecken.
+// NOTE: the actual secret must NOT be written here. This script is version
+// controlled, so a hardcoded secret here would be a leak exactly like the one we
+// are trying to stop. We match the shape instead: 64 hex characters.
 const SECRET_SHAPE = /['"][0-9a-f]{64}['"]/;
 
 const FORBIDDEN = [
-  { name: 'hemlighet i klartext (64 hex)', re: SECRET_SHAPE },
-  { name: 'MASTER_SECRET med värde', re: /MASTER_SECRET\s*=\s*['"][0-9a-f]{32,}/i },
-  { name: 'HMAC-nyckelgenerering', re: /hmacHex|createHmac|verifyHmacKey|checksumForSerial/ },
-  { name: 'såld eller genererad nyckel', re: /AAM-PRO-\d{4}-[0-9a-f]{4}-[0-9a-f]{4}/i },
-  { name: 'nyckel-hashlista', re: /LICENSE_KEY_HASHES\s*=\s*new Set\(\[[^\]]*[0-9a-f]{32}/ },
-  { name: 'aktiveringsnyckel-fält', re: /id="inputLicenseKey"|activateLicense|btnActivateLicense/ },
-  { name: 'nyckelgenerator', re: /AAM-PRO-\$\{/ },
-  // Endast KOD, inte översättningssträngar. "licenseProActive" i i18n.js är en
-  // vanlig text och ska inte blockera bygget.
-  { name: 'signaturkod kvar', re: /hmacHex|verifyHmacKey|checksumForSerial|safeEqual/ },
+  { name: 'secret in cleartext (64 hex)', re: SECRET_SHAPE },
+  { name: 'MASTER_SECRET with a value', re: /MASTER_SECRET\s*=\s*['"][0-9a-f]{32,}/i },
+  { name: 'HMAC key generation', re: /hmacHex|createHmac|verifyHmacKey|checksumForSerial/ },
+  { name: 'sold or generated key', re: /AAM-PRO-\d{4}-[0-9a-f]{4}-[0-9a-f]{4}/i },
+  { name: 'key hash list', re: /LICENSE_KEY_HASHES\s*=\s*new Set\(\[[^\]]*[0-9a-f]{32}/ },
+  { name: 'license key field', re: /id="inputLicenseKey"|activateLicense|btnActivateLicense/ },
+  { name: 'key generator', re: /AAM-PRO-\$\{/ },
+  // CODE only, not translation strings. "licenseProActive" in i18n.js is an
+  // ordinary string and must not block the build.
+  { name: 'signature code left over', re: /hmacHex|verifyHmacKey|checksumForSerial|safeEqual/ },
 ];
 
 const problems = [];
@@ -57,31 +57,31 @@ function copyDir(from, to) {
   }
 }
 
-/** Tar bort ett HTML-block mellan två markörer, inklusive markörerna. */
+/** Removes an HTML block between two markers, the markers included. */
 function cutBlock(text, startMarker, endMarker, label) {
   const start = text.indexOf(startMarker);
   if (start === -1) {
-    problems.push(`${label}: startmarkören "${startMarker}" hittades inte`);
+    problems.push(`${label}: the start marker "${startMarker}" was not found`);
     return text;
   }
   const endIdx = text.indexOf(endMarker, start);
   if (endIdx === -1) {
-    problems.push(`${label}: slutmarkören "${endMarker}" hittades inte`);
+    problems.push(`${label}: the end marker "${endMarker}" was not found`);
     return text;
   }
   return text.slice(0, start) + text.slice(endIdx + endMarker.length);
 }
 
 /**
- * Tar bort ett helt <div>-element genom att räkna djupet på öppnande och
- * stängande taggar. En enkel indexOf mot "</div>" räcker inte — licensrutan
- * innehåller flera nästlade divar, och då blir det lätt att lämna halva
- * gränssnittet kvar. Det var exakt vad som hände första gången.
+ * Removes a whole <div> element by counting the depth of opening and
+ * closing tags. A plain indexOf on "</div>" is not enough, because the license
+ * box holds several nested divs, and it is then easy to leave half of the
+ * interface behind. That is exactly what happened the first time.
  */
 function removeElement(text, openTag, label) {
   const start = text.indexOf(openTag);
   if (start === -1) {
-    problems.push(`${label}: "${openTag}" hittades inte`);
+    problems.push(`${label}: "${openTag}" was not found`);
     return text;
   }
   const tag = openTag.match(/^<([a-zA-Z][\w-]*)/)[1];
@@ -101,79 +101,83 @@ function removeElement(text, openTag, label) {
       i = o.index + o[0].length;
     } else break;
   }
-  problems.push(`${label}: kunde inte matcha slutet </${tag}>`);
+  problems.push(`${label}: could not match a closing </${tag}>`);
   return text;
 }
 
 // ---------------------------------------------------------------------------
-// 1) Rensa katalogen
+// 1) Clean the directory
 // ---------------------------------------------------------------------------
 fs.rmSync(OUT, { recursive: true, force: true });
 copyDir(SRC, OUT);
 
-// license.js ersätts av cooldown.js. signaturhemligheten lämnar aldrig den
-// privata katalogen.
+// license.js is replaced by cooldown.js. The signing secret never leaves the
+// private directory.
 fs.rmSync(path.join(OUT, 'license.js'), { force: true });
 fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'));
 
 // ---------------------------------------------------------------------------
-// 2) popup.html — ta bort nyckelfältet och CSS:en för det
+// 2) popup.html: remove the key field and its CSS
 // ---------------------------------------------------------------------------
 {
   const f = path.join(OUT, 'popup.html');
   let s = read(f);
 
-  // Hela licensrutan, inklusive alla nästlade divar.
-  s = removeElement(s, '<div class="license" id="licenseBox">', 'popup.html licensbox');
+  // The whole license box, including all nested divs.
+  s = removeElement(s, '<div class="license" id="licenseBox">', 'popup.html license box');
 
-  // Istället en enkel rad som berättar om gratisnivån, så användaren inte
-  // blir förvånad när knappen låser efter en körning.
+  // Instead a single line that states the free tier, so the user is not
+  // surprised when the button locks after a run.
   s = s.replace(
     '  <button class="btn-verify" id="btnVerify" style="display:none;"',
     '  <div class="free-note" id="freeNote" data-i18n="popup.freeTierNote">Free version: one automated sign-up every 3 hours.</div>\n\n  <button class="btn-verify" id="btnVerify" style="display:none;"'
   );
 
-  // license.js finns inte kvar, så taggen måste bort. Lämnas den ger
-  // webbläsaren ERR_FILE_NOT_FOUND i konsolen varje gång popupen öppnas.
+  // license.js does not survive, so the tag has to go. Leaving it makes the
+  // browser log ERR_FILE_NOT_FOUND every time the popup is opened.
   s = s.replace(/\s*<script src="license\.js"><\/script>\n/, '\n');
 
-  // CSS-blocket för licensen
-  s = s.replace(/    \/\* Licens \/ gratis-nivå \*\/[\s\S]*?\.license-deactivate:hover \{[^}]*\}\n/,
+  // CSS block for the license. Anchored on class names, never on the comment
+  // text, so translating the popup cannot silently break the strip.
+  s = s.replace(/    \/\*[^*]*\*\/\n    \.license \{[\s\S]*?\.license-deactivate:hover \{[^}]*\}\n/,
     `    .free-note {\n      margin-top: 8px;\n      padding: 7px 10px;\n      background: #1e293b;\n      border: 1px solid #334155;\n      border-radius: 8px;\n      font-size: 10px;\n      color: #64748b;\n      text-align: center;\n    }\n`);
 
   if (s.includes('license.js')) {
-    problems.push('popup.html: license.js finns kvar i en script-tagg');
+    problems.push('popup.html: license.js is still present in a script tag');
   }
 
   write(f, s);
 }
 
 // ---------------------------------------------------------------------------
-// 3) popup.js — ta bort all Pro-logik
+// 3) popup.js: remove all Pro logic
 // ---------------------------------------------------------------------------
 {
   const f = path.join(OUT, 'popup.js');
   let s = read(f);
 
-  // DOM-referenser
+  // DOM references
   s = s.replace(
     /const licenseStatus = document\.getElementById\('licenseStatus'\);[\s\S]*?const btnDeactivateLicense = document\.getElementById\('btnDeactivateLicense'\);\n/,
     ''
   );
 
-  // renderLicenseState / refreshLicenseState / nyckelhanterare
+  // renderLicenseState / refreshLicenseState / startLicenseCountdown.
+  // Anchored on the function names so translating the comments cannot break it.
   s = s.replace(
-    /\/\*\*\n \* Speglar cooldownen[\s\S]*?\n\}\n\nasync function refreshLicenseState\(\)[\s\S]*?\n\}\n\nfunction startLicenseCountdown\(\)[\s\S]*?\n\}\n\n/,
+    /\/\*\*[\s\S]*?\*\/\s*function renderLicenseState[\s\S]*?\n\}\n\nfunction startLicenseCountdown\(\)[\s\S]*?\n\}\n\n/,
     ''
   );
   s = s.replace(/btnActivateLicense\?\.addEventListener\('click'[\s\S]*?\n\}\);\n\nbtnDeactivateLicense\?\.addEventListener\('click'[\s\S]*?\n\}\);\n\n/, '');
   s = s.replace(/if \(btnBuyPro && typeof KOFI_URL === 'string' && KOFI_URL\) \{[\s\S]*?\n\}\n\n/, '');
 
-  // Kvarvarande anrop
+  // Remaining calls
   s = s.replace(/  await refreshLicenseState\(\);\n  startLicenseCountdown\(\);\n/, '');
+  // The cooldown is rejected here, so mirror it in the interface with a
+  // countdown and the buy button. Anchored on the guard, not on the comment.
   s = s.replace(
-    /\/\/ Cooldownen avvisar här[\s\S]*?\n    if \(profileRes\?\.reason === 'cooldown'\) \{[\s\S]*?\n    \}\n/,
-    `// Cooldownen avvisar här. Visa tiden kvar och lås knappen.
+    /[ \t]*\/\/[^\n]*\n    if \(profileRes\?\.reason === 'cooldown'\) \{[\s\S]*?\n    \}\n/,
+    `// The cooldown is rejected here, so show the time left and lock the button.
     if (profileRes?.reason === 'cooldown') {
       cooldownUntil = Date.now() + (profileRes.remainingMs || 0);
       log(t('popup.licenseCooldownText', profileRes.remainingLabel || ''), 'error');
@@ -191,13 +195,13 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
   s = s.replace(/^let cooldownUntil = 0;\nlet cooldownUntil = 0;\n/m, 'let cooldownUntil = 0;\n');
   s = s.replace(/^let licenseTimer = null;\n/m, '');
 
-  // Efteråt får ingen Pro-referens finnas kvar.
+  // Afterwards no Pro reference may remain.
   for (const bad of ['isPro', 'renderLicenseState', 'refreshLicenseState', 'startLicenseCountdown',
                      'licenseTimer', 'licenseStatus', 'licenseCooldown', 'licensePro',
                      'licenseEntry', 'btnBuyPro', 'inputLicenseKey', 'btnActivateLicense',
                      'btnDeactivateLicense', 'licenseResult', 'KOFI_URL']) {
     if (new RegExp(`\\b${bad}\\b`).test(s)) {
-      problems.push(`popup.js: "${bad}" finns kvar efter borttagningen`);
+      problems.push(`popup.js: "${bad}" is still present after removal`);
     }
   }
 
@@ -205,18 +209,20 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
 }
 
 // ---------------------------------------------------------------------------
-// 4) background.js — inga licensmeddelanden, import av cooldown.js
+// 4) background.js: no license messages, import cooldown.js instead
 // ---------------------------------------------------------------------------
 {
   const f = path.join(OUT, 'background.js');
   let s = read(f);
 
+  // Swap the license import for the cooldown import. Matches on the import
+  // call itself so any comment above it may be in any language.
   s = s.replace(
-    /\/\/ license\.js laddas in[\s\S]*?\nif \(typeof importScripts === 'function'\) \{\n  importScripts\('license\.js'\);\n\}/,
-    "// cooldown.js (gratisnivåns spärr) laddas in i service workern.\nif (typeof importScripts === 'function') {\n  importScripts('cooldown.js');\n}"
+    /(?:\/\/[^\n]*\n)+if \(typeof importScripts === 'function'\) \{\n  importScripts\('license\.js'\);\n\}/,
+    "// cooldown.js, the free tier rate limit, is loaded into the service worker.\nif (typeof importScripts === 'function') {\n  importScripts('cooldown.js');\n}"
   );
 
-  // Ta bort de fyra licensmeddelandena
+  // Remove the four license messages
   s = s.replace(
     /        case 'getLicenseStatus': \{[\s\S]*?\n        \}\n\n        case 'deactivateLicense': \{\n          sendResponse\(await deactivateLicense\(\)\);\n          break;\n        \}\n\n/,
     ''
@@ -230,7 +236,7 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
 }
 
 // ---------------------------------------------------------------------------
-// 5) MANIFEST — peka om till cooldown.js
+// 5) MANIFEST: point it at cooldown.js
 // ---------------------------------------------------------------------------
 {
   const f = path.join(OUT, 'manifest.json');
@@ -240,16 +246,16 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
 }
 
 // ---------------------------------------------------------------------------
-// 6) Läsbar rad: berätta vad som faktiskt togs bort
+// 6) Readable line: report what was actually removed
 // ---------------------------------------------------------------------------
-console.log('Genererade free-build/');
-console.log('  borttaget: license.js (signaturhemlighet, nyckelvalidering, Pro)');
-console.log('  ersatt:    cooldown.js (1 registrering per 3 timmar)');
-console.log('  borttaget: nyckelfält, Pro-knapp, Pro-status i popupen');
-console.log('  borttaget: activateLicense / getLicenseStatus / deactivateLicense');
+console.log('Generated free-build/');
+console.log('  removed:    license.js (signing secret, key validation, Pro)');
+console.log('  replaced:   cooldown.js (one registration every three hours)');
+console.log('  removed:    key field, Pro button, Pro status in the popup');
+console.log('  removed:    activateLicense / getLicenseStatus / deactivateLicense');
 
 // ---------------------------------------------------------------------------
-// 7) FÖRSTÅNDEFÖRSVAR — stoppa bygget om en hemlighet finns kvar
+// 7) LAST LINE OF DEFENSE: stop the build if a secret is left over
 // ---------------------------------------------------------------------------
 const offenders = [];
 function scan(dir) {
@@ -268,15 +274,15 @@ function scan(dir) {
 scan(OUT);
 
 if (offenders.length) {
-  console.error('\nBYGGET AVBRÖTS. Följande finns i gratisversionen och får inte publiceras:');
+  console.error('\nBUILD ABORTED. The following is in the free version and may not be published:');
   for (const o of offenders) console.error('  - ' + o);
   process.exit(1);
 }
 
 if (problems.length) {
-  console.error('\nBYGGET AVBRÖTS. Följande gick inte att hantera:');
+  console.error('\nBUILD ABORTED. The following could not be handled:');
   for (const p of problems) console.error('  - ' + p);
   process.exit(1);
 }
 
-console.log('\nKontrollerad: ingen hemlighet, ingen nyckel, ingen Pro i free-build/.');
+console.log('\nVerified: no secret, no key and no Pro in free-build/.');

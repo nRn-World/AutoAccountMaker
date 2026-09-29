@@ -1,12 +1,12 @@
-# --- Hemligheter och försäljningsdata: FÅ ALDRIG publiceras ---
-# MASTER_SECRET signerar licensnycklarna. Offentliggör den och vem som helst
-# kan skapa Pro-nycklar. Den ligger i extension/ som inte versionsätts.
+# Secrets and sales data: NEVER publish
+# MASTER_SECRET signs the license keys. Publish it and anyone can mint Pro
+# keys. It lives in extension/ which is not version controlled.
 extension/
 keygen.js
 keys-sold.txt
 HEMLIGHET-BACKUP.txt
 
-# --- Privat källträd ---
+# Private source tree
 src/
 dist/
 node_modules/
@@ -18,14 +18,18 @@ index.html
 .env
 .env.example
 
-# --- Utdata ---
+# Output
 Screenshots/
 *.log
 
-# --- System ---
+# Test artifacts written by the playwright suite
+free-build/*.png
+free-build/csv-downloads/
+
+# System
 .DS_Store
 Thumbs.db
 metadata.json
 
-# Verktyg som anv�nds lokalt f�r att ta bilder
+# Local tool used to produce the screenshots
 make-assets.mjs

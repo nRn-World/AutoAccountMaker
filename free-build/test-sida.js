@@ -2,19 +2,19 @@ let savedEmail = '';
 let savedPassword = '';
 let savedUsername = '';
 
-// Koden som den "inkommande" e-posten innehåller på testsidan.
+// The code that the "incoming" e mail contains on the test page.
 const SIMULATED_CODE = '482916';
 
 const STORAGE_KEY = 'aam_test_account';
 
-// t() och friends kommer från i18n.js och är redan globala funktioner.
-// Deklarera dem inte på nytt här — "const { t } = ..." skulle kollidera med
-// i18n.js:ns "function t" i global scope och kasta en SyntaxError som dödar
-// hela det här skriptet.
+// t() and friends come from i18n.js and are already global functions.
+// Do not redeclare them here. "const { t } = ..." would collide with the
+// "function t" in i18n.js in global scope and throw a SyntaxError that
+// kills this entire script.
 
 /**
- * Spara kontot i sessionStorage så att uppgifterna finns kvar om sidan laddas om.
- * Annars försvinner dem och det går inte att testa inloggningen.
+ * Saves the account in sessionStorage so the details survive a page reload.
+ * Otherwise they are lost and there is no way to test logging in.
  */
 function persistAccount() {
   try {
@@ -23,7 +23,7 @@ function persistAccount() {
       JSON.stringify({ email: savedEmail, password: savedPassword, username: savedUsername })
     );
   } catch {
-    /* sessionStorage kan blockeras — flödet fungerar ändå i den här sessionen */
+    /* sessionStorage can be blocked, the flow still works within this session */
   }
 }
 
@@ -71,7 +71,7 @@ function setStepDescription(text) {
   document.getElementById('stepDesc').textContent = text;
 }
 
-/** Bygger en rad med etikett + värde, utan innerHTML. */
+/** Builds a label and value row, without innerHTML. */
 function credRow(label, value) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -103,10 +103,10 @@ document.querySelectorAll('.otp-input').forEach((input, i, arr) => {
 });
 
 /**
- * Efter att registreringsformuläret skickats visas verifieringssidan. Eftersom det
- * är en lokal testsida finns ingen riktig inkorg, så vi simulerar att brevet
- * kommer: efter några sekunder fylls OTP-fälten med koden. Då fungerar både
- * tilläggets auto-verifiering och manuellt klick på knappen.
+ * Once the sign up form is submitted the verification page appears. Since this
+ * is a local test page there is no real inbox, so we simulate the message
+ * arriving: after a few seconds the OTP fields fill with the code. This works
+ * both for the automatic verification and for clicking the button by hand.
  */
 function simulateIncomingMail() {
   const badge = document.getElementById('emailBadge');
@@ -200,8 +200,8 @@ document.getElementById('btnVerify').addEventListener('click', (e) => {
 
 /**
  * Inloggningen kontrollerar uppgifterna mot dem som registrerades, precis som
- * en riktig sajt. Fel uppgifter ger ett felmeddelande, rätta leder till
- * dashboarden — så att det går att se att flödet faktiskt fungerade.
+ * a real site. Wrong details give an error, correct ones lead to the
+ * dashboard, so you can see that the flow really worked.
  */
 document.getElementById('btnLogin').addEventListener('click', (e) => {
   e.preventDefault();
@@ -235,7 +235,7 @@ document.getElementById('btnSignOut').addEventListener('click', () => {
   showResult(t('test.signedOut'), 'info');
 });
 
-// När tillägget fyller i OTP-fälten ska de markeras som ifyllda.
+// When the extension fills the OTP fields they must be marked as filled.
 window.addEventListener('aam-otp-filled', () => {
   document.querySelectorAll('.otp-input').forEach((inp) => {
     if (inp.value) inp.classList.add('filled');
@@ -243,9 +243,9 @@ window.addEventListener('aam-otp-filled', () => {
 });
 
 /**
- * Sidor inom tillägget (test-sidan) kan ha flera formulär. Popupens
- * "Log in"-knapp ber oss växla till inloggningssteget först, så att den inte
- * fyller i registreringsformuläret när sidan råkar stå på ett annat steg.
+ * Pages inside the extension, such as the test page, can have several forms. The
+ * "Log in" button asks us to switch to the login step first, so that it does
+ * not fill the sign up form when the page happens to be on another step.
  */
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request?.action === 'showLoginStep') {
@@ -266,10 +266,10 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   await I18N.initI18n();
   setStepDescription(t('test.step1Desc'));
 
-  // Finns ett sparat konto från ett tidigare besök? Fyll i inloggningsformuläret
-  // så att popupens "Log in"-knapp går att testa direkt. Vi byter däremot INTE
-  // sida automatiskt — annars skulle "Registrera automatiskt" fylla i
-  // inloggningsformuläret efter en omladdning.
+  // Is there an account saved from an earlier visit? Fill in the login form
+  // so the popup "Log in" button can be tested straight away. We do NOT switch
+  // so the popup "Log in" button can be tested straight away. We do NOT switch
+  // login form after a reload.
   if (restoreAccount()) {
     document.getElementById('loginEmail').value = savedEmail;
     document.getElementById('loginPassword').value = savedPassword;

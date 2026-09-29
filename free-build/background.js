@@ -1,9 +1,9 @@
 /**
- * background.js — Service worker för AutoAccountMaker
- * Fixad: bättre OTP-extrahering, badge-status, längre polling, robustare flöde
+ * background.js: Service worker for AutoAccountMaker
+ * Improved OTP extraction, badge status, longer polling, more robust flow
  */
 
-// cooldown.js (gratisnivåns spärr) laddas in i service workern.
+// cooldown.js, the free tier rate limit, is loaded into the service worker.
 if (typeof importScripts === 'function') {
   importScripts('cooldown.js');
 }
@@ -26,9 +26,9 @@ function clearBadge(delayMs = 0) {
 }
 
 /**
- * Visar ett tillstånd en stund och rensar sedan badgeen. En kvarstående röd ✗
- * eller 34/40 ser ut som ett pågående fel långt efter att det är klart, så
- * varje tillstånd får en kort livslängd.
+ * Shows a state briefly and then clears the badge. A lingering red cross
+ * or a stuck 34/40 looks like an ongoing error long after it is done, so
+ * every state gets a short lifetime.
  */
 function flashBadge(text, color, holdMs) {
   updateBadge(text, color);
@@ -38,9 +38,9 @@ function flashBadge(text, color, holdMs) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * MV3 service workers stängs av efter ~30 s inaktivitet, och en setTimeout räknar
- * inte som aktivitet. Varje API-anrop nollställer timern, så vi "andas" en gång
- * per poll-varv för att hålla worker levande under hela väntetiden.
+ * MV3 service workers are shut down after about 30 s of inactivity, and a
+ * setTimeout does not count as activity. Every API call resets the timer, so
+ * we "breathe" once per polling round to keep the worker alive throughout.
  */
 function heartbeat() {
   try {
@@ -50,27 +50,27 @@ function heartbeat() {
 }
 
 /**
- * Skriver en puls tidsstämpel in i det sparade verifieringsjobbet.
+ * Writes a pulse timestamp into the stored verification job.
  *
- * Service workern dödas efter ~30 sekunders inaktivitet. Om den dör mitt i en
- * polling-garanti körs `finally` aldrig, så verificationJob ligger kvar i
- * storage upp till fyra minuter och blockerar alla nya försök med
- * "A verification is already running" — trots att ingen verifiering pågår.
- * Med en puls kan vi skilja ett levande jobb från ett dödt.
+ * The service worker dies after about 30 seconds of inactivity. If it dies
+ * in the middle of a polling wait, `finally` never runs, so verificationJob
+ * stays in storage for up to four minutes and blocks every new attempt with
+ * "A verification is already running", even though nothing is verifying.
+ * With a pulse we can tell a living job from a dead one.
  */
 let lastJobPulse = 0;
 function touchVerificationJob() {
   const now = Date.now();
-  // Throttla: pollingen anropar heartbeat() några gånger per sekund.
+// Throttling: the polling calls heartbeat() a few times per second.
   if (now - lastJobPulse < 2000) return;
   lastJobPulse = now;
   chrome.storage.local
     .get({ verificationJob: null })
     .then(({ verificationJob }) => {
       if (!verificationJob?.account) return null;
-      // Läs igen direkt före skrivningen. Annars kan en pågående pulsskrivning
+// Read straight back before writing. Otherwise an in flight pulse write can
       // hinna landa EFTER att runAutoVerification raderat jobbet i sin finally,
-      // och då återuppträdas ett avslutat jobb som låser nästa försök.
+// revive a finished job that reads the next attempt.
       return chrome.storage.local.get({ verificationJob: null }).then((cur) => {
         if (!cur.verificationJob?.account) return null;
         return chrome.storage.local.set({
@@ -82,10 +82,10 @@ function touchVerificationJob() {
 }
 
 /**
- * Klassar HTTP-fel så vi kan avbryta omedelbart i stället för att polla i två
+ * Classifies HTTP errors so we can stop immediately instead of polling for two
  * minuter mot en endpoint som aldrig kommer svara. Returnerar { code, message }
- * där code översätts av gränssnittet. Returnerar null om felet är tillfälligt och
- * värdigt att försöka igen.
+ * where the code is translated by the interface. Returns null when the error
+ * is temporary and worth retrying.
  */
 function classifyMailApiError(res) {
   if (res.status === 401 || res.status === 403) {
@@ -115,7 +115,7 @@ function classifyMailApiError(res) {
   return null;
 }
 
-// --- crypto.js (inbäddad) ---
+// crypto.js (embedded)
 async function deriveKey(password, salt) {
   const encoder = new TextEncoder();
   const baseKey = await crypto.subtle.importKey(
@@ -246,13 +246,13 @@ const DEFAULT_SETTINGS = {
   country: 'SE',
 };
 
-// Tillåtna sparrgränser. 10 är standard.
+// 100 was removed from the list when the limit changed to 199. Without this
 const RETENTION_OPTIONS = [10, 50, 199];
 const DEFAULT_RETENTION = 10;
 
-// 100 togs bort ur listan när gränsen ändrades till 199. Utan den här
-// migreringen skulle varje användare som sparat 100 tyst falla tillbaka till 10
-// — och lagringsgränsen kapar listan, så de hade förlorat konton.
+// Allowed storage limits. 10 is the default.
+// migration anyone who had saved 100 would silently fall back to 10, and
+// since the limit trims the list, they would have lost accounts.
 const RETENTION_MIGRATION = { 100: 199 };
 
 function normalizeRetention(value) {
@@ -273,12 +273,12 @@ function generateRandomString(length, useSpecial = true) {
   return result;
 }
 
-// Åldern på de genererade profilerna. Användaren bad om en 30-åring.
+// Age of the generated profiles. The user asked for 30 year olds.
 const PROFILE_AGE_YEARS = 30;
 
 /**
- * Genererar ett födelsedatum för en person med given ålder. Dagen väljs utifrån
- * månadens faktiska längd så att datumet alltid är giltigt (t.ex. inte 31/02).
+// Age of the generated profiles. The user asked for 30 year olds.
+ * the actual length of the month so the date is always valid (not 31/02).
  */
 function randomBirthDate(ageYears = PROFILE_AGE_YEARS) {
   const now = new Date();
@@ -394,7 +394,7 @@ async function generateProfile() {
     mailInfo = await createMailTmAccount(password);
   }
 
-  // Slumpmässig kön. Formulär använder ofta "man"/"kvinna" i stället för
+// Random gender. Forms often use "man"/"woman" instead of
   // "male"/"female", vilket setSelectValue hanterar via synonymer.
   const genders = ['male', 'female'];
   const gender = genders[Math.floor(Math.random() * genders.length)];
@@ -407,30 +407,30 @@ async function generateProfile() {
     fullName: `${firstName} ${lastName}`,
     birthDate: randomBirthDate(),
     gender,
-    // Land används av formulär med landsväljare. Det passar det land användaren
-    // själv uppgett i inställningarna, vilket minskar risken för att en sajt
-    // bedömer kontot som misstänkt.
+// The country is used by forms with country pickers. It matches the country
+// the user themselves gave in the settings, which lowers the risk of a site
+// treating the account as suspicious.
     country: settings.country || DEFAULT_SETTINGS.country,
     createdAt: new Date().toISOString(),
   };
 }
 
-// Ord som tyder på att en länk leder till verifiering.
+// Words that indicate a link leads to a verification.
 const VERIFY_URL_WORDS = /(confirm|verif|activat|validat|signup|sign-?up|register|auth|token|magic-?link|check|approve|complete)/i;
 const VERIFY_ANCHOR_WORDS = /(verify|verifiera|bekräfta|bekrafta|confirm|confirma|activate|aktivera|validate|validera|accept|godkänn|godkann|continue|fortsätt|fortsatt|complete|slutför|sign in|logga in)/i;
 
-// Länkar som aldrig är verifieringslänkar: tracking, sociala nätverk, bilder, avbeställning.
+// Words that indicate a link leads to a verification.
 const LINK_NOISE_WORDS = /(unsubscribe|list-unsubscribe|manage[-_]?preferences|privacy|cookie|terms|legal|impressum|careers|facebook|instagram|(^|\/\/|www\.)x\.com|twitter|linkedin|youtube|tiktok|reddit|pinterest|github|cdn\.|track|beacon|pixel|\/open\.php|\/view|\.(png|jpe?g|gif|webp|svg|css|js)(\?|$))/i;
 
-// Parametrar som typiskt bär verifieringshemligheten.
+// Parameters that typically carry the verification secret.
 const TOKEN_PARAMS = /[?&](token|code|key|hash|ticket|jwt|sig|otp|verify|confirm|activation|email_token)=/i;
 
 const MAIL_PROVIDER_HOSTS = /(mail\.tm|mail-tm|guerrillamail|mailinator|maildrop|1secmail|yopmail|tempmail|temp-mail|uberip|mail\.guru)/i;
 
 /**
- * Poängen sätter en verifieringslänk över annat: tydliga verifieringsord i URL:en
- * eller i länktexten ger högst poäng, brusande länkar (tracking, sociala nätverk,
- * bilder) får stryk. Länkar över 30 tecken räcker inte längre som ensamt bevis.
+ * The score puts a verification link above other things: clear verification
+ * words in the URL or in the link text score highest, while noisy links
+ * (tracking, social networks, images) score low. Links longer than 30
  */
 function scoreVerificationLink(href, anchorText) {
   if (!href) return -1000;
@@ -447,7 +447,7 @@ function scoreVerificationLink(href, anchorText) {
   if (anchorText && VERIFY_ANCHOR_WORDS.test(anchorText)) score += 60;
   if (TOKEN_PARAMS.test(url)) score += 50;
 
-  // En länk som pekar tillbaka till e-posttjänsten är aldrig verifieringen.
+// A link that points back to the mail service is never the verification.
   return score;
 }
 
@@ -475,9 +475,9 @@ function absolutizeLink(href, baseUrl) {
 }
 
 /**
- * Rankar verifieringslänkar i stället för att ta den första som "ser lång ut".
- * Returnerar { links, confident } där confident = true bara när en länk klarade
- * poängtröskeln, alltså en riktig verifieringslänk och inte bara brusk.
+ * Ranks verification links instead of taking the first that "looks right".
+ * Returns { links, confident } where confident is only true when a link
+ * cleared the score threshold, so a real verification link and not just noise.
  */
 function extractVerificationLinks(html, baseUrl) {
   const source = html || '';
@@ -492,7 +492,7 @@ function extractVerificationLinks(html, baseUrl) {
     if (!existing || existing.score < score) best.set(url, { url, score });
   };
 
-  // 1) Ankare med sin länktext — den starkaste signalen.
+// 1) Anchors with their link text, the strongest signal.
   const anchorRe = /<a\b[^>]*?href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = anchorRe.exec(source)) !== null) {
@@ -511,8 +511,8 @@ function extractVerificationLinks(html, baseUrl) {
     return { links: strong.map((c) => c.url), confident: true };
   }
 
-  // Ingen tydlig verifieringslänk. Ta ändå de bästa kandidaterna, men markera
-  // resultatet som osäkert så att vi inte påstår att kontot är verifierat.
+// No clear verification link. Still take the best candidates, but mark the
+// result as uncertain so that we do not claim the account is verified.
   const weak = ranked.filter((c) => c.score > 0).slice(0, 3);
   return { links: weak.map((c) => c.url), confident: false };
 }
@@ -533,19 +533,19 @@ function stripHtml(html) {
 }
 
 /**
- * allowGeneric=false används när vi redan hittat en tydlig verifieringslänk.
- * Då ska vi inte plocka upp godtyckliga 4-8-siffriga tal (ordernummer, tidsstämplar)
- * som "kod" — de skulle vinna över den länk som faktiskt verifierar kontot.
+ * allowGeneric=false is used once we already found a clear verification link.
+ * Then we must not pick up arbitrary four to eight digit numbers (order
+ * numbers, timestamps) as a "code", because they would win over the link
  */
 function extractOtpFromContent(html, text, allowGeneric = true) {
   const plain = `${stripHtml(html || '')} ${text || ''}`;
   const candidates = [];
 
-  // Extrahera alla sifferkombinationer med kontext (föredra dessa)
+// Extract all digit combinations with context, preferring these
   const contextualPatterns = [
     /(?:verification|verify|code|pin|otp|passcode|security|token|challenge|auth)[:\s#-]*(\d{4,8})/gi,
     /(?:kod|verifiering|bekräftelse)[:\s#-]*(\d{4,8})/gi,
-    /(\d{4,8})(?:\s*(?:is|är|er|este|ist|ar|–|—|:-))?\s*(?:your|din|the|one.?time|verification|code|pin|otp)/gi,
+// Extract all digit combinations with context, preferring these
     /(?:enter|use|input|type|skriv|ange)[\s:]*(\d{4,8})[\s:]*(?:code|pin|otp|to|for|below|nedan|that|as)/gi,
     /(?:code|kod|pin|otp)[:\s]*(\d{3})[-\s](\d{3})/gi,
   ];
@@ -561,7 +561,7 @@ function extractOtpFromContent(html, text, allowGeneric = true) {
     }
   }
 
-  // Generiska mönster (backup) — bara om inget kontextuellt hittades
+// Generic patterns as a backup, only if nothing contextual was found
   if (allowGeneric && !candidates.some((c) => c.contextual)) {
     const genericPatterns = [
       /\b(\d{6})\b/g,
@@ -594,10 +594,10 @@ function getMailMsgId(msg) {
 }
 
 function parseMailResult(html, text, subject, baseUrl) {
-  // Plaintext-mejl har ofta inga ankare alls — vi måste söka i texten också.
+// Plain text mails often have no anchors at all, so we must search the text too.
   const haystack = [html || '', text || ''].filter(Boolean).join('\n');
   const { links, confident } = extractVerificationLinks(haystack, baseUrl);
-  // Sök bara efter en lös kod när vi inte redan har en tydlig verifieringslänk.
+// Only look for a loose code when we do not already have a clear link.
   const otp = extractOtpFromContent(html, text, !confident);
   return {
     success: !!(otp || links.length > 0),
@@ -654,7 +654,7 @@ async function pollMailTmForVerification(token, baseUrl, maxAttempts = 40) {
         }
       }
     } catch (err) {
-      // Nätverksfel — försök igen, men kom ihåg att hålla worker vid liv.
+// Network error, so try again, but remember to keep the worker alive.
       heartbeat();
     }
 
@@ -745,9 +745,9 @@ const VERIFY_SUCCESS_URL = /(verified|activated|confirmed|success|complete|welco
 const VERIFY_FAIL_URL = /(expired|invalid|error|failed|failure|already-used|denied)/i;
 
 /**
- * Öppnar verifieringslänken och följer sedan med vad sidan faktiskt svarar.
- * Returnerar { verified, url, reason } så att vi bara sätter verified=true
- * när vi har bevis — inte för att en länk råkade öppnas.
+ * Opens the verification link and then follows what the page actually says.
+ * Returns { verified, url, reason } so that we only set verified=true when
+ * we have evidence, not merely because a link happened to open.
  */
 async function openVerificationLink(link) {
   let tab = null;
@@ -771,8 +771,8 @@ async function openVerificationLink(link) {
 }
 
 /**
- * Låter verifieringssidan ladda och frågar den sedan om vad som hände.
- * En länk som leder till "expired" räknas alltså inte som lyckad verifiering.
+ * Lets the verification page load and then asks it what happened.
+ * A link that leads to "expired" therefore does not count as a success.
  */
 async function waitForVerificationOutcome(tabId, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
@@ -825,7 +825,7 @@ async function waitForVerificationOutcome(tabId, timeoutMs = 30000) {
 }
 
 async function applyVerificationToTab(tabId, mailResult, settings) {
-  // 1)Verifieringslänk är starkaste signalen — öppna den först.
+// 1) A verification link is the strongest signal, so open it first.
   if (mailResult.links?.length > 0 && settings.autoClickVerification) {
     const link = mailResult.links[0];
     const opened = await openVerificationLink(link);
@@ -834,8 +834,8 @@ async function applyVerificationToTab(tabId, mailResult, settings) {
     }
 
     if (!mailResult.linkConfident) {
-      // Länken hittades men är inte säkert en verifieringslänk. Vi öppnar den
-      // i bakgrunden men påstår inte att kontot är verifierat.
+// The link was found but is not certainly a verification link. We open it
+// in the background but do not claim the account is verified.
       return {
         method: 'link',
         link,
@@ -905,15 +905,15 @@ const VERIFICATION_JOB_TTL = 4 * 60 * 1000;
 let verificationInProgress = false;
 
 /**
- * Kör hela verifieringsflödet: pollar inkorgen, öppnar länken/koden och
- * bekräftar resultatet. Sparar jobbet i storage så att det kan återupptas
- * om service workern avbryts mitt i väntan.
+ * Runs the whole verification flow: polls the inbox, opens the link or code
+ * and confirms the result. The job is stored so it can be resumed if the
+ * service worker is interrupted in the middle of the wait.
  */
 /**
- * Kör verifieringen på tilläggets egen testsida. Sidan visar koden på skärmen
- * i stället för att mejla den, så här läser vi av den och fyller i — samma väg
- * som på en riktig sajt, bara med koden från sidan i stället för från inkorgen.
- * Användaren ska inte behöva klicka på Verify själv.
+ * Runs the verification on the built in test page. The page shows the code on
+ * screen instead of mailing it, so we read it and fill it in, the same path
+ * as on a real site, only with the code from the page instead of an inbox.
+ * The user should never have to click Verify themselves.
  */
 async function runLocalTestVerification(account, tabId, settings) {
   updateBadge('…', '#f59e0b');
@@ -967,12 +967,12 @@ async function markAccountVerified(accountId) {
 }
 
 /**
- * Är en verifiering redan igång?
+ * Is a verification already running?
  *
- * Minnesvariabeln är det enda tillförlitliga signalen medan workern lever. Det
- * sparade jobbet används bara för att upptäcka döda jobb: om pulsen är äldre
- * än STALE har workern dött mitt i arbetet och låset måste släppas, annars
- * blockerar det här i fyra minuter (upp till VERIFICATION_JOB_TTL).
+ * The in memory variable is the only reliable signal while the worker lives.
+ * The stored job is only used to detect dead jobs: if the pulse is older than
+ * STALE the worker died mid task and the lock has to be released, otherwise
+ * it blocks here for four minutes (up to VERIFICATION_JOB_TTL).
  */
 const VERIFICATION_JOB_STALE_MS = 25000;
 
@@ -983,7 +983,7 @@ async function isVerificationBusy() {
 
   const lastSeen = verificationJob.heartbeatAt || verificationJob.startedAt || 0;
   if (Date.now() - lastSeen > VERIFICATION_JOB_STALE_MS) {
-    // Dött jobb — städa bort det så det inte blockerar i evighet.
+// Dead job, so remove it so it does not block forever.
     await chrome.storage.local.remove('verificationJob');
     return false;
   }
@@ -993,8 +993,8 @@ async function isVerificationBusy() {
 async function runAutoVerification(account, tabId, baseUrl) {
   const settings = await getSettings();
 
-  // Tilläggets egen testsida simulerar verifieringen inuti sidan. Att polla en
-  // riktig inkorg vore meningslöst, så i stället läser vi av koden på sidan.
+// The extension test page simulates the verification inside the page. Polling a
+// real inbox would be pointless, so we read the code off the page instead.
   if (typeof baseUrl === 'string' && baseUrl.startsWith('chrome-extension://')) {
     await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
     return runLocalTestVerification(account, tabId, settings);
@@ -1032,7 +1032,7 @@ async function runAutoVerification(account, tabId, baseUrl) {
 
   const applied = await applyVerificationToTab(tabId, mailResult, settings);
 
-  // Vi sätter verified=true bara när vi faktiskt har bevis för det.
+// We only set verified=true when we actually have evidence for it.
   if (applied?.success) {
     await chrome.storage.local.remove('pendingVerification');
     const data = await chrome.storage.local.get({ accounts: [] });
@@ -1056,8 +1056,8 @@ async function runAutoVerification(account, tabId, baseUrl) {
 }
 
 /**
- * Om workern startades om mitt i en väntan fortsätter vi där vi slutade,
- * så länge jobbet inte är för gammalt.
+ * If the worker was restarted in the middle of a wait we continue from
+ * where we left off, as long as the job is not too old.
  */
 async function resumeVerificationIfNeeded() {
   if (verificationInProgress) return;
@@ -1067,8 +1067,8 @@ async function resumeVerificationIfNeeded() {
     await chrome.storage.local.remove('verificationJob');
     return;
   }
-  // Om jobbet har en färsk puls lever en annan instans av workern redan på det.
-  // Då ska vi inte köra en andra polling parallellt — bara låta den sköta sig.
+// If the job has a fresh pulse another worker instance is already on it,
+// so we must not run a second poll in parallel, just let that one handle it.
   const lastSeen = verificationJob.heartbeatAt || verificationJob.startedAt || 0;
   if (Date.now() - lastSeen <= VERIFICATION_JOB_STALE_MS) return;
 
@@ -1077,7 +1077,7 @@ async function resumeVerificationIfNeeded() {
   try {
     await runAutoVerification(verificationJob.account, verificationJob.tabId, verificationJob.baseUrl);
   } catch {
-    /* tyst — nästa navigering försöker igen */
+/* quietly, the next navigation tries again */
   } finally {
     verificationInProgress = false;
   }
@@ -1112,9 +1112,9 @@ async function getAccountsForSite(hostname) {
 }
 
 /**
- * Kapsar kontolistan till spargränsen. Listan hålls nyast först, så när den
- * överstiger gränsen tas de äldsta bort automatiskt.
- * Returnerar { accounts, removed } så att anropande UI kan informera användaren.
+ * Trims the account list to the save limit. The list is kept newest first, so
+ * when it passes the limit the oldest are removed automatically.
+ * Returns { accounts, removed } so the calling interface can inform the user.
  */
 function applyRetention(accounts, limit) {
   const max = normalizeRetention(limit);
@@ -1123,7 +1123,7 @@ function applyRetention(accounts, limit) {
   return { accounts: list.slice(0, max), removed: list.length - max };
 }
 
-/** Sorterar nyast först, med createdAt som grund. */
+/** Sorts newest first, using createdAt as the basis. */
 function sortNewestFirst(accounts) {
   return [...accounts].sort((a, b) => {
     const ta = Date.parse(a?.createdAt || '') || 0;
@@ -1135,7 +1135,7 @@ function sortNewestFirst(accounts) {
 async function saveAccount(account) {
   const settings = await getSettings();
   const data = await chrome.storage.local.get({ accounts: [] });
-  // Samma webbplats + e-post ersätter det gamla kontot i stället för att dubblera.
+// The same website plus e mail replaces the old account instead of duplicating.
   const deduped = (data.accounts || []).filter(
     (a) => !(a.website === account.website && a.email === account.email)
   );
@@ -1154,8 +1154,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   });
   if (!pendingVerification?.account) return;
 
-  // Om ett pågående jobb finns sköter runAutoVerification om det. Vi tar bara
-  // vid om jobbet har dött eller aldrig kom igång.
+// If a job is already running, runAutoVerification sees to it. We only take
+// over when the job has died or never started.
   if (verificationJob && Date.now() - (verificationJob.startedAt || 0) <= VERIFICATION_JOB_TTL) return;
 
   const isVerificationUrl =
@@ -1178,7 +1178,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-// Återuppta en avbruten verifiering när workern startas om.
+// Resumes an interrupted verification when the worker starts.
 chrome.runtime.onStartup?.addListener(() => { resumeVerificationIfNeeded(); });
 resumeVerificationIfNeeded();
 
@@ -1197,7 +1197,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             next.language = DEFAULT_SETTINGS.language;
           }
           await chrome.storage.local.set({ settings: next });
-          // En sänkt spargräns ska slå direkt — kapa listan nu.
+// A lowered save limit must apply right away, so trim the list now.
           const { accounts } = await chrome.storage.local.get({ accounts: [] });
           const trimmed = applyRetention(sortNewestFirst(accounts), next.retentionLimit);
           if (trimmed.removed > 0) await chrome.storage.local.set({ accounts: trimmed.accounts });
@@ -1206,9 +1206,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         }
 
         case 'getNewProfile': {
-          // Hård grind: cooldownen kontrolleras här, inte bara i popupen, så att
-          // en knapp inte är det enda som styr begränsningen. En användare kan
-          // alltid fälla ut den egna popupen, men detta är vägen till en profil.
+// Hard gate: the cooldown is checked here, not only in the popup, so a
+// A strict save limit must apply right away, so trim the list now.
+// always detach their own popup, but this is the way to a profile.
           const slot = await consumeFreeRunSlot();
           if (!slot.allowed) {
             sendResponse({ success: false, ...slot });

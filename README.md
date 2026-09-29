@@ -1,275 +1,278 @@
 # AutoAccountMaker
 
-Automatiserad registrering för Chrome. Fyller i formulär, verifierar e-post med
-en temporär adress och loggar in — i ett klick.
+Automated sign up for Chrome. Fills in forms, verifies the e mail with a
+temporary address, and logs you in. One click.
 
-**Gratisversion:** en automatisk registrering var tredje timme.
-**Pro:** tar bort väntet.
+**Free version:** one automated sign up every three hours.
+**Pro:** removes the wait.
 
-![AutoAccountMaker — hela flödet](docs/demo.gif)
+![AutoAccountMaker, the full flow](docs/demo.gif)
 
-*En riktig körning mot tilläggets egen testsida. Kontot skapas, verifieras och
-loggas in — du klickar en gång.*
+*A real run against the built in test page. The account is created, verified,
+and logged in. You click once.*
 
 <p align="center">
-  <img src="docs/filled-form.png" alt="Formuläret ifyllt av tillägget" width="420">
+  <img src="docs/filled-form.png" alt="The form filled in by the extension" width="420">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/popup-done.png" alt="Kontot skapat och verifierat" width="290">
+  <img src="docs/popup-done.png" alt="The account created and verified" width="290">
 </p>
 
-*Formuläret fylls i fält för fält — efternamn, e-post, bekräftelseadress,
-lösenord, födelsedatum, kön. Grönt markerade fält är ifyllda av tillägget.*
+*Every field is filled in: first name, last name, e mail, confirmation, password,
+date of birth, gender. Fields marked in green were filled in by the extension.*
 
-> This project is licensed under the Business Source License 1.1. See [LICENSE](LICENSE).
+> Licensed under the Business Source License 1.1. See [LICENSE](LICENSE).
 
 ---
 
-## Innehåll
+## Contents
 
-- [Vad det gör](#vad-det-gör)
+- [What it does](#what-it-does)
 - [Installation](#installation)
-- [Användning](#användning)
-- [Inställningar](#inställningar)
-- [Språk](#språk)
-- [E-postleverantörer](#e-postleverantörer)
-- [Exportera konton](#exportera-konton)
-- [Vad som inte fungerar](#vad-som-inte-fungerar)
-- [Projektstruktur](#projektstruktur)
-- [Utveckling](#utveckling)
-- [Licens](#licens)
+- [Usage](#usage)
+- [Settings](#settings)
+- [Languages](#languages)
+- [E mail providers](#e-mail-providers)
+- [Exporting accounts](#exporting-accounts)
+- [What does not work](#what-does-not-work)
+- [Project layout](#project-layout)
+- [Development](#development)
+- [License](#license)
 
 ---
 
-## Vad det gör
+## What it does
 
-Besök en sida med registreringsformulär, öppna tillägget, klicka **Registrera
-automatiskt**. Sedan händer allt själv:
+Open a page with a sign up form, click the extension icon, and press **Register
+automatically**. Everything else happens on its own:
 
-| Steg | Vad som händer |
-|------|-----------------|
-| 1 | Skapar en temporär e-postadress och ett lösenord |
-| 2 | Fyller i formuläret: namn, e-post, bekräftelseadress, lösenord, land, kön, födelsedatum |
-| 3 | Kryssar i obligatoriska rutor, inklusive samtycke och villkor |
-| 4 | Skickar formuläret |
-| 5 | Väntar på verifieringsmejlet |
-| 6 | Skriver in koden eller öppnar länken |
-| 7 | Loggar in |
+| Step | What happens |
+|------|--------------|
+| 1 | Creates a temporary e mail address and a password |
+| 2 | Fills the form: names, e mail, confirmation, password, country, gender, date of birth |
+| 3 | Ticks the required checkboxes, including consent and terms |
+| 4 | Submits the form |
+| 5 | Waits for the verification e mail |
+| 6 | Enters the code or opens the link |
+| 7 | Logs in |
 
-Efterått ligger kontot i valvet. Nästa gång du besöker samma sida räcker det
-med **Logga in**.
+The account is saved to the vault. The next time you visit the same site, **Log
+in** is all you need.
 
-### Funktioner
+### Features
 
-- **Formulärifyllning** — klarar vanliga fält, anpassade `<select>`, egenbyggda
-  listboxar och kodsrutor
-- **Shadow DOM** — ser fält även på sajter som bygger dem som webbkomponenter
-  (till exempel `<w-textfield>`), där vanlig HTML inte når in
-- **Verifiering** — läser koden ur mejlet och fyller i den, oavsett om sidan
-  har ett fält eller sex små rutor
-- **Sju språk** — svenska, engelska, turkiska, arabiska, spanska, tyska, franska.
-  Arabiska visas höger-till-vänster
-- **Kontovalv** — sparas lokalt i webbläsaren, med gränsen 10, 50 eller 199
-- **Export** — CSV, PDF eller krypterad backup
-- **Testsida** — en inbyggd sida som visar hela flödet utan externa tjänster
+- **Form filling** handles ordinary fields, custom `<select>` elements, hand
+  built listboxes, and code boxes
+- **Shadow DOM support** reaches fields even on sites that build them as web
+  components, such as `<w-textfield>`, where plain HTML cannot get in
+- **Verification** reads the code from the e mail and enters it, whether the
+  page uses a single field or six small boxes
+- **Seven languages:** Swedish, English, Turkish, Arabic, Spanish, German,
+  French. Arabic is laid out right to left
+- **Account vault** stored locally in the browser, with a limit of 10, 50, or 199
+- **Export** to CSV, PDF, or an encrypted backup
+- **Test page** included, which walks through the whole flow without any outside
+  service
 
 ---
 
 ## Installation
 
-Tillägget laddas direkt från mappen `free-build/`. Inget byggs, ingen npm.
+The extension loads straight from the `free-build` folder. Nothing to build, no
+npm required.
 
-1. Öppna `chrome://extensions`
-2. Slå på **Utvecklarläge** (Developer mode) uppe till höger
-3. Klicka **Ladda upp okomprimerat tillägg** (Load unpacked)
-4. Välj mappen `free-build/`
+1. Open `chrome://extensions`
+2. Turn on **Developer mode** at the top right
+3. Click **Load unpacked**
+4. Choose the `free-build` folder
 
-Filen `free-build/` är en färdig Chrome MV3-tillägg. Öppna den mappen direkt.
+That folder is a complete Chrome MV3 extension. Pick it directly.
 
 ### Firefox
 
-Firefox stöder MV3 men `chrome.*`-namnrymden skiljer sig i vissa detaljer.
-Testa alltid på den webbläsare du avser att distribuera till. Kontrollera särskilt
-`manifest.json` om du paketerar om till `.xpi`.
+Firefox supports MV3, but the `chrome.*` namespace differs in places. Always
+test on the browser you intend to ship to. Review `manifest.json` if you repack
+it into an `.xpi`.
 
 ---
 
-## Användning
+## Usage
 
-1. Öppna en sida med ett registreringsformulär
-2. Klicka på tilläggets ikon
-3. Klicka **Registrera automatiskt**
-4. Följ förloppet i loggen
+1. Open a page with a sign up form
+2. Click the extension icon
+3. Press **Register automatically**
+4. Follow the progress in the log
 
-**Efter cooldownen** visas knappen som låst med tid kvar. Knappen låser upp
-automatiskt när tiden gått ut, du behöver inte ladda om något.
+**After the wait** the button locks and shows the time remaining. It unlocks by
+itself when the time is up, so there is nothing to reload.
 
-**Har du redan ett konto?** Öppna samma sida igen och klicka **Logga in**.
+**Already have an account?** Open the same page again and press **Log in**.
 
-**Testa först?** Klicka 🧪 i popupens ikonrad. Då öppnas en inbyggd testsida som
-går igenom hela flödet med en riktig e-postadress.
+**Want to try it first?** Click 🧪 in the icon row at the bottom of the popup.
+That opens a built in test page which runs the entire flow with a real temporary
+e mail address.
 
 ---
 
-## Inställningar
+## Settings
 
-Klicka ⚙️ i popupens ikonrad. Sidan är mörk och innehåller tre delar.
+Click ⚙️ in the icon row at the bottom of the popup. The page is dark and has
+three parts.
 
-**Language** — byt språk. Popupen uppdateras direkt, utan att stängas och
-öppnas om.
+**Language** changes the interface. The popup updates immediately, with no need
+to close and reopen it.
 
-**Account vault** — alla skapade konton, med export och radering.
+**Account vault** holds every account you created, with export and delete.
 
-- *Behåll nyaste* — 10, 50 eller 199. Det äldsta kontot raderas automatiskt när
-  gränsen nås.
-- **Visa sparade konton** har flyttat hit från popupen.
+- *Keep newest* sets the limit to 10, 50, or 199. The oldest account is deleted
+  automatically once the limit is reached.
+- **Show saved accounts** used to live in the popup and now lives here.
 
-**Avancerat** — hopfällt. Innehåller e-postleverantör och RapidAPI-nyckel.
-Lämnas den gömd behöver du inte bry dig om den.
+**Advanced** is collapsed. It contains the e mail provider and the RapidAPI key.
+If you leave it closed you never have to think about it.
 
-<img src="docs/settings.png" alt="Inställningssidan: språk, kontovalv och Avancerat" width="640">
+<img src="docs/settings.png" alt="Settings page: language, account vault, and Advanced" width="640">
 
 <p align="center">
-  <img src="docs/vault.png" alt="Kontovalvet med tre sparade konton" width="480">
+  <img src="docs/vault.png" alt="The account vault with three saved accounts" width="480">
 </p>
 
-*Valvet visar webbplats, e-post, användarnamn, verifieringsstatus och lösenord
-(dolda tills du klickar). Exportera till CSV, PDF eller krypterad backup.*
+*The vault shows website, e mail, username, verification state, and password
+(hidden until you click). Export to CSV, PDF, or an encrypted backup.*
 
 ---
 
-## Språk
+## Languages
 
-Sju språk, byt under ⚙️ → Language:
+Seven languages, changed under ⚙️ → Language:
 
 | | | | |
 |---|---|---|---|
 | 🇬🇧 English | 🇸🇪 Svenska | 🇹🇷 Türkçe | 🇸🇦 العربية |
 | 🇪🇸 Español | 🇩🇪 Deutsch | 🇫🇷 Français | |
 
-Ändras språket tillämpas direkt överallt, även i en popup som redan är öppen.
+When you change the language it applies everywhere at once, including in a
+popup that is already open.
 
 ---
 
-## E-postleverantörer
+## E mail providers
 
-| Leverantör | Krav |
-|---|---|
-| **mail.tm** (standard) | Gratis, fungerar direkt utan API-nyckel |
-| **temp-mail.org** | Kräver gratis [RapidAPI-nyckel](https://rapidapi.com/Privatix/api/temp-mail) |
+| Provider | Requirement |
+|----------|-------------|
+| **mail.tm** (default) | Free, works immediately, no API key |
+| **temp mail** (temp mail dot org) | Needs a free [RapidAPI key](https://rapidapi.com/Privatix/api/temp-mail) |
 
-Ställs in under ⚙️ → Avancerat. mail.tm används automatiskt om ingen nyckel
-anges.
+Set under ⚙️ → Advanced. If no key is given, mail.tm is used automatically.
 
-Observera att båda leverantörerna har egna gränser på hur snabbt konton kan
-skapas. Det styrs av dem, inte av tillägget.
-
----
-
-## Exportera konton
-
-Allt ligger på samma ställe, ⚙️ → Account vault.
-
-| Format | Innehåller | Krypterat |
-|---|---|---|
-| **CSV** | Webbplats, e-post, användarnamn, skapad, status | Nej |
-| **PDF** | Samma uppgifter i ett snyggt dokument | Nej |
-| **.enc** | Allt, inklusive lösenord och leverantörsuppgifter | Ja, med lösenord |
-
-CSV laddas ner med ett klick. PDF öppnar Chrome's printdialog, där du väljer
-**Spara som PDF**.
-
-**Om lösenord:** CSV och PDF utelämnar lösenord som standard. Kryssa i
-**Include passwords** om du vill ta med dem. Den krypterade backupen (.enc)
-innehåller alltid allt, men kräver ett masterlösenord både vid export och
-import.
-
-CSV och PDF är **inte** krypterade. Filen hamnar i Dokument och kan öppnas av
-någon annan. Använd `.enc` om du vill flytta konton säkert.
+Note that both providers have their own limits on how fast accounts can be
+created. That is controlled by them, not by the extension.
 
 ---
 
-## Vad som inte fungerar
+## Exporting accounts
 
-Det här är viktigt att veta innan du kör igång.
+Everything sits in the same place, ⚙️ → Account vault.
 
-**Varje webbplats är unik.** Tillägget hittar fält med heuristiker, och en sajt
-med ovanliga flöden, tungt bot-skydd eller egen inloggningslogik kan vägra
-registreringen eller fylla i formuläret delvis. Det finns ingen teknik som
-fungerar överallt, och ingen skillnad för det här.
+| Format | Contains | Encrypted |
+|--------|----------|-----------|
+| **CSV** | Website, e mail, username, created, status | No |
+| **PDF** | The same details in a clean document | No |
+| **.enc** | Everything, including passwords and provider data | Yes, with a master password |
 
-**CAPTCHA:er löses inte.** Vissa sajter använder bevis-arbete (proof of work) som
-en spärr mot robotar. Tillägget kryssar i rutan och låter sidan göra sitt
-arbete, men bygger ingen egen lösning.
+CSV downloads in a single click. PDF opens the browser print dialog, where you
+choose **Save as PDF**.
 
-**Endast e-post.** Tillägget skapar e-postadresser, inte telefonnummer. Sajter
-som kräver verifiering per sms fungerar inte.
+**About passwords:** CSV and PDF leave passwords out by default. Tick **Include
+passwords** if you want them included. The encrypted backup always contains
+everything, but it needs a master password both on export and on import.
 
-**Beror på e-postleverantören.** Om mail.tm eller temp-mail.org rate-limitar
-dig, eller ett mejl inte levereras, misslyckas körningen.
-
-**Ingen garanti för "verifierad".** Statusen betyder att sidan accepterade
-koden du fick. Om en sajt senare nekar kontot ligger det utanför tilläggets
-kontroll.
-
-Testa alltid på en sajt du faktiskt bryr dig om innan du kör flera.
+CSV and PDF are **not** encrypted. The file lands in your Documents folder and
+can be opened by anyone. Use `.enc` when you need to move accounts safely.
 
 ---
 
-## Projektstruktur
+## What does not work
+
+Read this before you start.
+
+**Every website is different.** The extension finds fields using heuristics, so
+a site with an unusual flow, heavy bot protection, or its own login logic may
+refuse the registration or fill the form only partly. No technique works
+everywhere, and that does not change here.
+
+**CAPTCHAs are not solved.** Some sites use proof of work as a barrier against
+bots. The extension ticks the box and lets the site do its own work, but it
+does not build a solver.
+
+**E mail only.** The extension creates e mail addresses, not phone numbers.
+Sites that require an SMS code will not work.
+
+**It depends on the e mail provider.** If mail.tm or the other provider rate
+limits you, or a message is not delivered, the run fails.
+
+**"Verified" is not a guarantee.** The status means the site accepted the code
+you were sent. If a site rejects the account later, that is outside the control
+of the extension.
+
+Always test on a site you actually care about before running several.
+
+---
+
+## Project layout
 
 ```
-docs/            bilder och GIF till den här filen
-free-build/      Färdig tilläggsmapp — ladda denna i Chrome
-build-free.mjs   Genererar free-build/ ur den privata källträden
-free-src/        Delar som används i bygget
-extension/       Privat källträd (licensering) — publiceras inte
+docs/            images and the demo used by this file
+free-build/      complete extension folder, load this in Chrome
+build-free.mjs   generates free-build from the private source tree
+free-src/        pieces used by the build
+extension/       private source tree (licensing), not published
 ```
 
-`free-build/` genereras, är inte handskriven. Ändra i `extension/` och kör:
+`free-build` is generated, not written by hand. Change something in the private
+source tree and run:
 
 ```bash
 node build-free.mjs
 ```
 
-Byggskriptet vägrar färdigställa om någon licenshemlighet, nyckel eller Pro-kod
-finns kvar i utdata.
+The build refuses to finish if a license secret, a key, or any Pro code is
+found in the output.
 
 ---
 
-## Utveckling
+## Development
 
-Kräver Node 18 eller senare.
+Requires Node 18 or later.
 
 ```bash
-node build-free.mjs      # bygg gratisversionen
+node build-free.mjs      # build the free version
 ```
 
-Inga beroenden behövs för själva tillägget — det är vanliga filer, inte ett
-byggt bundlet paket.
+No dependencies are needed for the extension itself. It is plain files, not a
+bundled build artifact.
 
-### Projektstruktur i korthet
+### File overview
 
-| Fil | Ansvar |
-|---|---|
-| `content.js` | Fältigenkänning, ifyllning, OTP. Kör i webbsidan |
-| `background.js` | Profilgenerering, e-post, verifiering, inställningar |
-| `popup.js` | Gränssnitt och flödessteg |
-| `cooldown.js` | Gratisnivåns spärr |
-| `i18n.js` | Alla sju språk |
-| `options.html` / `.js` | Inställningar, språk och kontovalv |
-| `vault.js` | Kontolista, export och import |
+| File | Responsibility |
+|------|----------------|
+| `content.js` | Field detection, filling, one time codes. Runs inside the page |
+| `background.js` | Profile generation, e mail, verification, settings |
+| `popup.js` | Interface and the flow steps |
+| `cooldown.js` | The free tier rate limit |
+| `i18n.js` | All seven languages |
+| `options.html` / `.js` | Settings, language, and account vault |
+| `vault.js` | Account list, export, and import |
 
 ---
 
-## Licens
+## License
 
-Business Source License 1.1. Se [LICENSE](LICENSE).
+Business Source License 1.1. See [LICENSE](LICENSE).
 
-- Får du använda, ändra och dela detta — till och med byte-datumet.
-- Får du **inte** sälja det, ta betalt för det, eller köra det som en tjänst åt
-  någon annan.
-- Från och med **2028-09-29** övergår det till Apache License 2.0, och då får
-  du göra vad du vill med det, kommersiellt inräknat.
+- You may use, change, and share this, up to the change date.
+- You may **not** sell it, charge for it, or run it as a service for others.
+- From **2028-09-29** it becomes Apache License 2.0, and from that day you may
+  do as you like with it, including commercially.
 
-Fungerar BUSL inte för ditt behov säg till, det går att byta till exempelvis
-MIT eller Apache 2.0 direkt.
+If BUSL does not suit your needs, say so. It can be changed to MIT or Apache
+2.0 directly.

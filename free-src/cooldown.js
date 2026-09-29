@@ -1,8 +1,8 @@
-// cooldown.js — gratisnivåns spärr (1 automatisk registrering per 3-timmarsfönster)
+// cooldown.js, the free tier rate limit: one automated registration per three hour window.
 //
-// Det här är hela "licenssystemet" i gratisversionen: en räknare som ser till
-// att du inte kör fler än en registrering var tredje timme. Det finns ingen
-// nyckel, ingen hemlighet och ingen Pro-nivå — bara spärren.
+// This is the whole license system in the free version: a counter that keeps
+// you to one registration every third hour. There is no key, no secret and
+// no Pro tier, only the rate limit.
 
 const RUN_TIMESTAMPS_KEY = 'aam_run_timestamps';
 const FREE_RUN_LIMIT = 1;
@@ -12,7 +12,7 @@ function remainingMinutes(nextAllowedAt, now) {
   return Math.max(1, Math.ceil((nextAllowedAt - now) / (60 * 1000)));
 }
 
-// Matar nedräkningen i popupen ("2h 14m").
+// Drives the countdown in the popup ("2h 14m").
 function formatRemaining(ms) {
   if (ms <= 0) return '';
   const totalMinutes = Math.ceil(ms / 60000);
@@ -65,7 +65,7 @@ function cooldownDenied(now, timestamps) {
   };
 }
 
-// Bara för gränssnittet. Förbrukar ingen slot.
+// Interface use only. Does not consume a slot.
 async function canStartRun() {
   try {
     const { now, timestamps } = await readActiveTimestamps();
@@ -78,7 +78,7 @@ async function canStartRun() {
     return { allowed: true, tier: 'free', remainingMs: 0, remainingLabel: '' };
   } catch (e) {
     console.warn('[AAM Cooldown] Check failed:', e);
-    // Fail closed: en trasig kontroll får inte öppna upp obegränsat bruk.
+    // Fail closed: a broken check must never open up unlimited use.
     return {
       allowed: false,
       tier: 'free',
@@ -105,8 +105,8 @@ async function consumeFreeRunSlotInner() {
   return { allowed: true, tier: 'free' };
 }
 
-// Förbrukar slotten när en registrering faktiskt startar. Serialiserad, så två
-// snabba klick inte båda kan passera kontrollen.
+// Consumes the slot when a registration actually starts. Serialized so two
+// fast clicks cannot both pass the check.
 async function consumeFreeRunSlot() {
   const run = consumeSlotChain.then(
     () => consumeFreeRunSlotInner(),

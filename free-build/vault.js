@@ -12,8 +12,8 @@ const vaultCount = document.getElementById('vaultCount');
 let pendingAction = null;
 let pendingFileContent = null;
 
-// t() och translateError() kommer från i18n.js och är globala. Deklarera dem inte
-// på nytt — det kastar en SyntaxError i global scope och dödar hela skriptet.
+// t() and translateError() come from i18n.js and are global. Do not declare
+// them again, that throws a SyntaxError in global scope and kills the script.
 
 function sendMsg(msg) {
   return new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
@@ -35,7 +35,7 @@ function closeModal() {
   pendingFileContent = null;
 }
 
-/** Skapar en knapp med översatt etikett. */
+/** Creates a button with a translated label. */
 function button(text, className) {
   const b = document.createElement('button');
   b.textContent = text;
@@ -160,7 +160,8 @@ async function loadRetention() {
   if (retentionSelect) retentionSelect.value = String(limit);
 }
 
-// Spara direkt när gränsen ändras, så att listan kapas utan extra knapptryck.
+// Save as soon as the limit changes, so the list is trimmed without another
+// button press.
 retentionSelect?.addEventListener('change', async () => {
   const settingsRes = await sendMsg({ action: 'getSettings' });
   const res = await sendMsg({
@@ -192,13 +193,13 @@ document.getElementById('btnRefresh').addEventListener('click', loadAccounts);
 // ---------------------------------------------------------------------------
 // Export till CSV och PDF
 //
-// Båda formaten är OLÅSTA — till skillnad från .enc-backuppen. Lösenord
-// utesluts därför om man inte aktivt kryssar i rutan.
+// Both formats are NOT encrypted, unlike the .enc backup. Passwords are left
+// out unless the box is deliberately ticked.
 // ---------------------------------------------------------------------------
 
 const includePasswordsBox = document.getElementById('includePasswords');
 
-/** Bygger den kolumnlista som gäller just nu. */
+/** Builds the column list that applies right now. */
 function exportColumns() {
   const cols = [
     { key: 'website', label: t('export.colWebsite') },
@@ -225,9 +226,9 @@ function accountRows(acc) {
 }
 
 /**
- * CSV-citering. Utan detta förstör ett fält med komma, citattecken eller
- * radbrytning hela filen i Excel — e-postadresser har sällan sådant, men
- * användarnamn och webbplatsnamn kan ha det.
+ * CSV quoting. Without it, a value containing a comma, a quote, or a newline
+ * destroys the whole file in Excel. E mail addresses rarely have any of
+ * those, but usernames and website names can.
  */
 function csvCell(value) {
   const s = String(value == null ? '' : value);
@@ -242,7 +243,7 @@ function buildCsv(accounts) {
     const row = accountRows(acc);
     lines.push(cols.map((c) => csvCell(row[c.key])).join(','));
   }
-  // BOM så att Excel läser å/ä/ö och andra tecken utan teckenbrudda celler.
+  // BOM so Excel reads accented characters without mangled cells.
   return '\uFEFF' + lines.join('\r\n');
 }
 
@@ -255,7 +256,7 @@ function downloadBlob(content, filename, type) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  // Liten fördröjning så att nedladdningen hinner starta innan URL:en återkallas.
+  // A short delay so the download starts before the URL is revoked.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -281,9 +282,10 @@ document.getElementById('btnExportCsv')?.addEventListener('click', async () => {
 });
 
 /**
- * PDF via printdialogen. Vi fyller #printArea med en ren tabell och låter
- * printdialogen göra jobbet. Fördelen är att webbläsaren sköter texten, så
- * inga tecken blir trasiga — en handskriven PDF-generator riskerar det.
+ * PDF through the print dialog. We fill #printArea with a clean table and let
+ * the print dialog do the work. The benefit is that the browser handles the
+ * text, so no characters get mangled, which a hand written PDF generator
+ * would risk.
  */
 document.getElementById('btnExportPdf')?.addEventListener('click', async () => {
   const res = await sendMsg({ action: 'getAccounts' });
@@ -319,7 +321,7 @@ document.getElementById('btnExportPdf')?.addEventListener('click', async () => {
   `;
 
   showVaultMessage(t('export.pdfHint'), 'ok');
-  // Låt layouten sätta sig innan dialogen öppnas.
+  // Let the layout settle before the dialog opens.
   setTimeout(() => window.print(), 150);
 });
 

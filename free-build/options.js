@@ -4,26 +4,27 @@ const rapidApiKey = document.getElementById('rapidApiKey');
 const languageSelect = document.getElementById('language');
 const saveStatus = document.getElementById('saveStatus');
 
-// OBS: retentionSelect deklareras INTE här. vault.js:9 deklarerar den (med
-// samma id) och laddas på samma sida. Två globala "const retentionSelect" ger
-// SyntaxError: Identifier has already been declared, och då dör BÅDA skripten.
-// Låt vault.js äga retention-rutan.
+// NOTE: retentionSelect is deliberately NOT declared here. vault.js declares it
+// from the same id, and both scripts load on the same page. Two global
+// "const retentionSelect" declarations throw
+// SyntaxError: Identifier has already been declared, which kills BOTH scripts.
+// Let vault.js own the retention control.
 
 function sendMsg(msg) {
   return new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
 }
 
-// t() kommer från i18n.js och är en global funktion. Deklarera den inte på nytt
-// — det kastar en SyntaxError i global scope och dödar hela skriptet.
+// t() comes from i18n.js and is a global function. Do not declare it again,
+// that throws a SyntaxError in global scope and kills the whole script.
 
-/** Fyller språklistan med de sju stödda språken, med engelska först. */
+/** Fills the language list with the seven supported languages, English first. */
 function buildLanguageOptions(selected) {
   if (!languageSelect) return;
   languageSelect.innerHTML = '';
   for (const lang of I18N.SUPPORTED_LANGUAGES) {
     const opt = document.createElement('option');
     opt.value = lang;
-    // Språknamnet visas alltid på sitt eget språk, som det ska.
+    // The language name is always shown in its own language, as it should be.
     opt.textContent = I18N.LANGUAGE_NAMES[lang];
     if (lang === selected) opt.selected = true;
     languageSelect.appendChild(opt);
@@ -44,9 +45,9 @@ function flashSaved(message) {
 
 emailProvider?.addEventListener('change', toggleRapidApi);
 
-// Ändras språket direkt, utan att man behöver spara först. Popupen lyssnar på
-// samma storage-nyckel och uppdateras direkt, så bytet slår igenom överallt
-// utan att någon sida behöver laddas om.
+// The language applies immediately, with no need to save first. The popup
+// listens to the same storage key and updates straight away, so the change
+// takes effect everywhere without any page being reloaded.
 languageSelect?.addEventListener('change', async () => {
   const chosen = languageSelect.value;
   const current = await sendMsg({ action: 'getSettings' });
@@ -55,8 +56,8 @@ languageSelect?.addEventListener('change', async () => {
     settings: { ...(current?.settings || {}), language: chosen },
   });
   I18N.applyTranslations(document, chosen);
-  // Bygg om listan så att det nya språket markeras, och översätt de texter
-  // som inte bärs av data-i18n.
+  // Rebuild the list so the new language is marked, and retranslate the
+  // strings that are not carried by data-i18n.
   buildLanguageOptions(chosen);
   flashSaved(t('options.saved'));
 });

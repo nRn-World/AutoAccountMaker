@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AutoAccountMaker",
   "version": "1.12.0",
-  "description": "Skapar konton automatiskt med tillfällig e-post, verifierar och loggar in åt dig.",
+  "description": "Creates accounts automatically with a temporary e mail address, verifies them and logs in for you.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -40,16 +40,6 @@
     }
   ],
   "options_page": "options.html",
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "vault.html"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

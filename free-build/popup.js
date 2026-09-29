@@ -15,10 +15,10 @@ let currentTab = null;
 let pageReady = false;
 let cooldownUntil = 0;
 
-// Stegen i registreringsflödet, i ordning.
+// The steps of the registration flow, in order.
 const STEP_KEYS = ['stepEmail', 'stepFill', 'stepSubmit', 'stepSave', 'stepMail', 'stepVerify', 'stepDone'];
 
-/** Visar steg-vyn och sätter varje steg till ett tillstånd. */
+/** Shows the step view and sets every step to a state. */
 function showSteps() {
   stepsBox.classList.add('visible');
   renderSteps(0);
@@ -37,7 +37,7 @@ function setStep(index, state) {
   dot.textContent = state === 'done' ? '✓' : state === 'failed' ? '!' : '';
 }
 
-/** Markera steg 1..index som klara och index+1 som pågående. */
+/** Marks steps 1..index as done and index+1 as running. */
 function renderSteps(activeIndex) {
   stepRows().forEach((_, i) => {
     if (i < activeIndex) setStep(i, 'done');
@@ -46,7 +46,7 @@ function renderSteps(activeIndex) {
   });
 }
 
-/** Avslutar flödet: steget som var aktivt blir klart eller misslyckat. */
+/** Ends the flow: the step that was active becomes done or failed. */
 function finishSteps(activeIndex, ok) {
   if (ok) {
     for (let i = 0; i <= activeIndex; i++) setStep(i, 'done');
@@ -56,13 +56,13 @@ function finishSteps(activeIndex, ok) {
   }
 }
 
-/** Hela flödet lyckades — markera även det sista steget som klart. */
+/** The whole flow succeeded, so mark the last step as done too. */
 function completeSteps() {
   stepRows().forEach((_, i) => setStep(i, 'done'));
 }
 
-// t() och translateError() kommer från i18n.js och är globala. Deklarera dem inte
-// på nytt — det kastar en SyntaxError i global scope och dödar hela skriptet.
+// t() and translateError() come from i18n.js and are global. Do not declare them
+// again, because that throws a SyntaxError in global scope and kills the script.
 
 function log(msg, type = 'info') {
   logBox.classList.add('visible');
@@ -74,9 +74,9 @@ function log(msg, type = 'info') {
 }
 
 /**
- * Visar verifieringslänken som ett klickbart stycke. Om den automatiska
- * verifieringen inte lyckas ska användaren kunna öppna den själv — annars
- * finns ingen väg fram när tillägget inte kan bekräfta resultatet.
+ * Shows the verification link as a clickable paragraph. If the automatic
+ * verification does not succeed the user must be able to open it themselves,
+ * otherwise there is no way forward when the extension cannot confirm the result.
  */
 function showLink(link) {
   if (!link) return;
@@ -148,9 +148,9 @@ async function ensureContentScript(tabId) {
 }
 
 /**
- * Väntar in att sidan är redo att fyllas i. Cookie-samtycken laddar ofta om
- * sidan, och content scriptet svarar en stund innan formuläret renderats —
- * då går ifyllningen förlorad. Vi kräver därför både svar OCH ett formulär.
+ * Waits for the page to be ready to fill. Cookie consent often reloads the
+ * page, and the content script answers a moment before the form is rendered,
+ * so the fill is lost. We therefore require both an answer AND a form.
  */
 async function waitForContentScript(tabId, timeoutMs = 10000, requireForm = false) {
   const deadline = Date.now() + timeoutMs;
@@ -173,10 +173,10 @@ async function fillOnTab(tabId, msg) {
 }
 
 /**
- * Skickar ett meddelande till bakgrunden, men ger verifieringen tid att bli klar
- * först. Tidigare avbröt vi direkt med "A verification is already running", så
- * bara för att föregående konto fortfarande höll på att verifieras föll hela
- * registreringen — trots att kontot redan var skapat och sparat.
+ * Sends a message to the background, but gives the verification time to finish
+ * first. Earlier we aborted right away with "A verification is already running",
+ * purely because the previous account was still verifying for a whole
+ * registration, even though the account was already created and saved.
  */
 async function sendMsgWaitingForSlot(msg, waitMs = 120000) {
   const deadline = Date.now() + waitMs;
@@ -201,7 +201,7 @@ async function runVerification(account, tabId) {
   btnRegister.disabled = true;
   btnLogin.disabled = true;
   showSteps();
-  // Steg 1-4 (konto, formulär, skicka, spara) är redan klara — vi är på steg 5.
+  // Steps 1 to 4 (account, form, submit, save) are done, we are on step 5.
   renderSteps(5);
   statusText.textContent = t('popup.statusWaiting');
   log(t('popup.statusWaiting'), 'info');
@@ -259,12 +259,12 @@ async function findAccountForTab(tab) {
 }
 
 async function init() {
-  // Rensa badge när popupen öppnas
+  // Clear the badge when the popup is opened
   chrome.action.setBadgeText({ text: '' });
 
   await I18N.initI18n();
 
-  // Licens/cooldown ska vara synligt direkt, även på chrome:// sidor.
+  // License and cooldown must be visible right away, also on chrome:// pages.
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTab = tab;
@@ -322,7 +322,8 @@ btnRegister.addEventListener('click', async () => {
 
   const profileRes = await sendMsg({ action: 'getNewProfile' });
   if (!profileRes?.success) {
-    // Cooldownen avvisar här. Visa tiden kvar och lås knappen.
+    // The cooldown is rejected here, so mirror it in the interface with a
+// The cooldown is rejected here, so show the time left and lock the button.
     if (profileRes?.reason === 'cooldown') {
       cooldownUntil = Date.now() + (profileRes.remainingMs || 0);
       log(t('popup.licenseCooldownText', profileRes.remainingLabel || ''), 'error');
@@ -348,14 +349,14 @@ btnRegister.addEventListener('click', async () => {
   const settingsRes = await sendMsg({ action: 'getSettings' });
   const autoSubmit = settingsRes?.settings?.autoSubmitForm !== false;
 
-  // Testsidan har flera formulär — se till att vi står på registreringssteget.
+  // The test page has several forms, so make sure we are on the registration step.
   if (currentTab.url.startsWith('chrome-extension://')) {
     await sendToTab(currentTab.id, { action: 'showRegisterStep' });
     await new Promise((r) => setTimeout(r, 250));
   }
 
-  // Stäng cookie-banners, kryssa i Terms och klicka oss fram till formuläret.
-  // Många sajter laddar om sidan när samtycket lagras — vänta in att den
+  // Close cookie banners, tick Terms and click our way to the form.
+  // Many sites reload the page when consent is stored, so wait for it
   // svarar igen innan vi fyller i.
   const prep = await sendToTab(currentTab.id, { action: 'prepareForRegistration' });
   if (prep?.consentDismissed) log(t('popup.logConsent'), 'info');
@@ -364,17 +365,17 @@ btnRegister.addEventListener('click', async () => {
     log(t('popup.logAdvanced', prep.funnelClicks.join(' → ')), 'info');
   }
   if (prep?.consentDismissed) {
-    // Samtycket kan ha laddat om sidan. Vänta in att formuläret finns igen,
-    // kör prepare en gång till (banner kan ha kommit tillbaka) och vänta mer.
+    // The consent may have reloaded the page. Wait for the form to be there again,
+    // run prepare once more (the banner may have come back) and wait more.
     await waitForContentScript(currentTab.id, 10000, true);
     const prep2 = await sendToTab(currentTab.id, { action: 'prepareForRegistration' });
     if (prep2?.funnelClicks?.length) {
       log(t('popup.logAdvanced', prep2.funnelClicks.join(' → ')), 'info');
     }
   }
-  // Två olika fel ska inte rapporteras som samma sak:
+  // Two different errors must not be reported as the same thing:
   //  - content scriptet svarar inte alls → sidan laddade om
-  //  - sidan svarar men har inget formulär → fel sida (t.ex. en ren
+  //  - the page answers but has no form: wrong page (a pure
   //    inloggningssida). Att kalla det "slutade svara" var vilseledande.
   const ready = await waitForContentScript(currentTab.id, 10000, true);
   if (!ready) {
@@ -390,8 +391,8 @@ btnRegister.addEventListener('click', async () => {
 
   statusText.textContent = t('popup.logFilling');
 
-  // Om sidan navigerar i exakt detta ögonblick förloras meddelandet. Då väntar vi
-  // in att den är redo igen och gör om försöket en gång.
+  // If the page navigates at exactly this moment the message is lost. Then we wait
+  // for it to be ready again and retry once.
   let fillRes = await fillOnTab(currentTab.id, {
     action: 'fillRegistration',
     profile,
@@ -406,7 +407,7 @@ btnRegister.addEventListener('click', async () => {
     });
   }
 
-  // Ingen ifylld form alls — säg det rakt ut i stället för att påstå framgång.
+  // No filled form at all, so say it straight instead of claiming success.
   if (fillRes?.result?.noForm) {
     log(t('popup.logNoForm'), 'error');
     statusText.textContent = t('popup.statusNoForm');
@@ -436,15 +437,15 @@ btnRegister.addEventListener('click', async () => {
   }
   if (fillRes.result?.submitted) log(t('popup.logSubmitted'), 'success');
 
-  // Visa tydligt vilka fält som INTE kunde fyllas, så en ofullständig form
-  // inte ser ut att fungera när den inte gör det.
+  // Show clearly which fields could NOT be filled, so an incomplete form
+  // does not look like it works when it does not.
   const missing = fillRes.result?.missing || [];
   if (missing.length) {
     log(t('popup.logMissing', missing.join(', ')), 'error');
   }
 
   renderSteps(2);
-  // Klicket på skicka sker 800 ms efter att fälten fyllts.
+  // The submit click happens 800 ms after the fields are filled.
   await new Promise((r) => setTimeout(r, 1000));
   renderSteps(3);
 
@@ -480,8 +481,8 @@ btnRegister.addEventListener('click', async () => {
   credsBox.classList.add('visible');
   btnVerify.style.display = 'block';
 
-  // Nu sköter tillägget resten: leta efter verifieringsmejlet (eller läsa av
-  // koden på testsidan), fylla i den och skicka. Användaren klickar inte.
+  // Now the extension does the rest: look for the verification mail (or read
+  // the code on the test page), fill it in and submit. The user does not click.
   statusText.textContent = t('popup.statusRegistered');
   log(t('popup.logVerifyStart'), 'info');
   renderSteps(5);
@@ -573,8 +574,8 @@ btnLogin.addEventListener('click', async () => {
   statusText.textContent = t('popup.logLoggingIn', account.email);
   log(t('popup.logLoggingIn', account.email));
 
-  // Testsidan har flera formulär. Ber den växla till inloggningssteget så att
-  // vi inte fyller i registreringsformuläret.
+  // The test page has several forms. Ask it to switch to the login step so
+  // we do not fill the registration form.
   if (currentTab.url.startsWith('chrome-extension://')) {
     await sendToTab(currentTab.id, { action: 'showLoginStep' });
     await new Promise((r) => setTimeout(r, 250));
@@ -605,14 +606,14 @@ btnLogin.addEventListener('click', async () => {
   btnLogin.disabled = false;
 });
 
-// Kontona ligger i Inställningar nu, så valvknappen är bort från popupen.
+// The accounts live in Settings now, so the vault button is gone from the popup.
 btnTest?.addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('test-sida.html') }));
 btnSettings?.addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 /**
- * Byt språk i Inställningar → popupen uppdateras direkt, utan att stängas
- * och öppnas om. chrome.storage.onChanged triggas i alla extension-sammanhang,
- * även i en popup som redan är öppen.
+ * Changing language in Settings updates the popup right away, without closing
+ * and reopening it. chrome.storage.onChanged fires in every extension context,
+ * including a popup that is already open.
  */
 chrome.storage?.onChanged?.addListener((changes, area) => {
   if (area !== 'local' || !changes.settings) return;
@@ -626,7 +627,7 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
       ? t('popup.statusTestsite')
       : safeHostname(currentTab.url);
   }
-  // Stegtexter och status är inte data-i18n, så de måste ritas om.
+  // Step texts and status are not data-i18n, so they must be redrawn.
   const current = Number(stepsBox.querySelector('.step-row.done')?.dataset.step || 0);
   if (current) renderSteps(current);
   log(t('popup.statusIdle'), 'info');

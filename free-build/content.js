@@ -1,5 +1,5 @@
 /**
- * content.js — Skannar sidor och fyller i registrerings-/inloggningsformulär.
+ * content.js: scans pages and fills in registration and login forms.
  */
 
 const HIGHLIGHT_CLASS = 'aam-highlight';
@@ -19,22 +19,22 @@ function injectStyles() {
 }
 
 function setInputValue(input, value) {
-  // Använd prototypen från elementets EGEN window — en <input> i en shadow root
-  // tillhör samma dokument, men en framtida iframe-kontext hade egen prototyp.
+// Use the prototype from the element OWN window: an <input> in a shadow root
+  // belongs to the same document, but a future iframe context would have its own prototype.
   const view = input.ownerDocument?.defaultView || window;
   const proto = Object.getPrototypeOf(input);
   const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
     || Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, 'value')?.set;
   if (nativeSetter) nativeSetter.call(input, value);
   else input.value = value;
-  // composed: true låter händelsen passera ut ur shadow rooten, så att
-  // custom elementet ovanför hör om ändringen.
+  // composed: true lets the event pass out of the shadow root, so that
+  // the custom element above hears about the change.
   input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
   input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   input.classList.add(HIGHLIGHT_CLASS);
 }
 
-// Synonymer för kön, så att "male" även träffar "Man", "M", "Herr" etc.
+// Synonyms for gender, so "male" also matches "Man", "M", "Herr" and so on.
 const GENDER_SYNONYMS = {
   male: ['male', 'man', 'm', 'manne', 'herr', 'hombre', 'erkek', 'adam', 'masculin', 'männlich', 'homme'],
   female: ['female', 'woman', 'w', 'f', 'kvinna', 'kvin', 'dam', 'fr', 'femme', 'mujer', 'kadın', 'weiblich', 'dame'],
@@ -43,8 +43,8 @@ const GENDER_SYNONYMS = {
 };
 
 /**
- * Länder med alias på flera språk. Många sajter listar länder på sitt eget
- * språk, så vi matchar mot alla vanliga varianter.
+   * Countries with aliases in several languages. Many sites list countries in their
+   * own language, so we match every common variant.
  */
 const COUNTRIES = [
   { code: 'SE', names: ['sweden', 'sverige', 'suède', 'suède', 'schweden', 'isveç', 'suecia', 'szwecja'] },
@@ -97,7 +97,7 @@ const COUNTRIES = [
   { code: 'BD', names: ['bangladesh'] },
 ];
 
-/** Returnerar landsuppgifterna för en ISO-kod, med engelskt namn som reserv. */
+/** Returns the country details for an ISO code, with the English name as fallback. */
 function countryByCode(code) {
   const wanted = String(code || '').toUpperCase();
   const found = COUNTRIES.find((c) => c.code === wanted);
@@ -112,11 +112,11 @@ function normalizeOptionText(value) {
 }
 
 /**
- * Sätter ett <select>-värde. Returnerar true om något valdes.
+   * Sets a <select> value. Returns true if something was selected.
  *
- * allowClosest används för numeriska listor (år/månad/dag). Då väljer vi det
- * närmast liggande alternativet om det exakta värdet saknas. Utan det förlorar
- * vi tyst fältet på sajter som bara erbjuder ett begränsat årtalsintervall.
+   * allowClosest is used for numeric lists (year/month/day). Then we pick the
+   * closest option when the exact value is missing. Without it we silently lose
+   * the field on sites that only offer a limited year range.
  */
 function setSelectValue(select, value, options = {}) {
   const { allowClosest = false, synonyms = null, strict = false } = options;
@@ -128,7 +128,7 @@ function setSelectValue(select, value, options = {}) {
 
   let match = null;
 
-  // 1) Exakt träff på value eller synlig text.
+  // 1) Exact hit on value or visible text.
   match = opts.find((o) => normalizeOptionText(o.value) === target || normalizeOptionText(o.text) === target);
 
   // 2) Synonymer (t.ex. "male" -> "Man").
@@ -141,8 +141,8 @@ function setSelectValue(select, value, options = {}) {
     });
   }
 
-  // 3) Delsträng (t.ex. "Mar" in i "March"). Hoppas över i strict-läge, där
-  //    delsträngar ger falska träffar ("SE" i "Senegal", "NO" i "Korea North").
+  // 3) Substring (for example "Mar" inside "March"). Skipped in strict mode, where
+  //    substrings give false hits ("SE" in "Senegal", "NO" in "North Korea").
   if (!match && !strict) {
     match = opts.find((o) => {
       const t = normalizeOptionText(o.text);
@@ -150,13 +150,13 @@ function setSelectValue(select, value, options = {}) {
     });
   }
 
-  // 4) Numerisk träff, tolerant mot "07" vs "7".
+  // 4) Numeric hit, tolerant of "07" versus "7".
   if (!match && /^\d+$/.test(target)) {
     const n = Number(target);
     match = opts.find((o) => normalizeOptionText(o.value) !== '' && Number(normalizeOptionText(o.value)) === n);
   }
 
-  // 5) Årtal utanför listans intervall -> närmast liggande.
+  // 5) Year outside the range of the list, so the closest one.
   if (!match && allowClosest && /^\d{4}$/.test(target)) {
     const year = Number(target);
     const candidates = opts
@@ -168,7 +168,7 @@ function setSelectValue(select, value, options = {}) {
     }
   }
 
-  // 6) Månad/dag som saknas helt -> närmaste numeriska alternativ.
+  // 6) Month or day entirely missing, so the closest numeric option.
   if (!match && allowClosest && /^\d{1,2}$/.test(target)) {
     const n = Number(target);
     const candidates = opts
@@ -215,9 +215,9 @@ function findInputs() {
 
   const birthCandidates = [];
 
-  // Endast textliknande fält kan fyllas i. Utan det här skyddet kan en kryssruta
-  // eller knapp kapsa en fält-slot: t.ex. matchar "Marknadsföring" mönstret /ad/
-  // och blir då "förnamn". Det gjorde att riktiga namn-fält aldrig fylldes.
+  // Only text like fields can be filled in. Without this guard a checkbox
+  // or a button can hijack a field slot: for example the Swedish word for marketing
+  // /ad/ pattern and becomes the first name field. That stopped real name fields
   const FILLABLE_INPUT_TYPES = new Set(['text', 'email', 'password', 'tel', 'number', 'date', 'search', 'url', '']);
 
   all.forEach((el) => {
@@ -235,12 +235,12 @@ function findInputs() {
     const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
     const autoComplete = (el.autocomplete || '').toLowerCase();
     const combined = `${name} ${id} ${placeholder} ${label} ${ariaLabel} ${autoComplete}`.toLowerCase();
-    // type=email är entydigt och måste bedömas först. Tidigare låg e-postkontrollen
-    // under användarnamnet och var dessutom låst med !result.username, vilket
-    // gjorde att e-postfältet aldrig fylldes på formulär där användarnamn
-    // står först (t.ex. testsidan, och många riktiga sajter).
+    // type=email is unambiguous and must be judged first. Earlier the e mail check
+    // sat below the username and was additionally locked with !result.username,
+    // which meant the e mail field never got filled on forms where the username
+    // comes first (the test page, and many real sites).
     if (type === 'email') {
-      // En andra e-postadress är nästan alltid bekräftelsefältet.
+      // A second e mail address is almost always the confirmation field.
       const isConfirm = /confirm|bekräft|bekraft|repeat|again|verify|validation|repeat/.test(combined);
       if (isConfirm) {
         if (!result.emailConfirm) result.emailConfirm = el;
@@ -262,7 +262,7 @@ function findInputs() {
         result.confirmPassword = el;
       } else if (!result.confirmPassword) result.confirmPassword = el;
     // Obs: inga korta ord som "ad" — det matchar bland annat "marknad" och
-    // "adress", vilket ledde till att kryssrutor kapsade namn-fälten.
+    // "adress", which made checkboxes hijack the name fields.
     } else if (
       type === 'text' &&
       /(first|fornamn|förnamn|fname|given.?name|ime\s*nombre|prénom|vorname|ime[nr])/i.test(combined) &&
@@ -278,9 +278,9 @@ function findInputs() {
       if (!result.fullName) result.fullName = el;
     }
 
-    // Dag/månad/år. De tre kontrollerna är oberoende `if` (inte else-if) så att
-    // ett element som matchar "månad" inte hindrar ett annat från att matcha
-    // "dag". Övriga fält är fortfarande en else-if-kedja ovanför.
+    // Day/month/year. The three checks are independent if statements, not else if,
+    // so an element matching "month" does not stop another from matching
+    // "day". The other fields are still an else if chain above.
     if (!result.birthYear && (tag === 'select' || type === 'number' || type === 'tel') &&
         (/year|år|ano|jahr|année|año/.test(combined) || autoComplete === 'bday-year')) {
       result.birthYear = el;
@@ -294,8 +294,8 @@ function findInputs() {
       result.birthDay = el;
     }
 
-    // Kandidater till ett enda "hela datumet"-fält avgörs efter loopen, så att
-    // vi inte sätter birthDate till ett av dag/månad/år-fälten.
+    // Candidates for a single "whole date" field are decided after the loop, so we
+    // do not set birthDate from one of the day/month/year fields.
     if ((type === 'date' || tag === 'select' || type === 'text') &&
         /(födelsedag|fodelsedag|födelsedatum|birthdate|birthday|birth|born|född|födelse|dob|nacimiento|geburtsdatum)/.test(combined)) {
       birthCandidates.push({ el, combined });
@@ -305,7 +305,7 @@ function findInputs() {
       if (!result.gender && (tag === 'select' || type === 'text' || type === 'radio')) result.gender = el;
     }
 
-    // En <select> vars etikett eller vars alternativ innehåller länder är en
+    // A <select> whose label or options contain countries is
     // landskontroll. Anpassade listboxar (knappar) hanteras i setCountry().
     if (!result.country && tag === 'select') {
       const optionsText = [...el.options].map((o) => o.textContent).join(' ').toLowerCase();
@@ -316,7 +316,7 @@ function findInputs() {
     }
   });
 
-  // Använd ett enda datum-fält bara om vi INTE hittade separata dag/månad/år-fält.
+    // Use a single date field only if we did NOT find separate day/month/year fields.
   if (!result.birthYear && !result.birthMonth && !result.birthDay && birthCandidates.length) {
     result.birthDate = birthCandidates[0].el;
   }
@@ -326,7 +326,7 @@ function findInputs() {
 
 function findLabelText(input) {
   if (input.id) {
-    // Sök i samma shadow root först — ett id är bara unikt inom sitt träd.
+    // Search inside the same shadow root first: an id is only unique within its tree
     const root = input.getRootNode?.() || document;
     let label = null;
     try { label = root.querySelector(`label[for="${input.id}"]`); } catch {}
@@ -340,13 +340,13 @@ function findLabelText(input) {
 }
 
 /**
- * Söker igenom hela dokumentet INKLUDERAT alla shadow roots.
+   * Searches the whole document, INCLUDING every shadow root.
  *
- * Många moderna sajter bygger formulären som custom elements
+   * Many modern sites build their forms from custom elements
  * (<w-textfield>, <w-button> med en <input> inuti en shadow root). Vanlig
- * document.querySelectorAll ser ingenting där — på login.vend.se hittade vi 0
- * fält trots att e-postfältet var tydligt synligt. Därför går vi igenom
- * shadow roots också.
+ * document.querySelectorAll sees nothing there. On login.vend.se we found no
+ * fields even though the e mail field was clearly visible. That is why we walk
+ * through the shadow roots as well.
  */
 function deepQueryAll(selector, root = document) {
   const found = [];
@@ -370,25 +370,25 @@ function deepQueryAll(selector, root = document) {
 
 function visibleControls(selector) {
   return deepQueryAll(selector).filter((el) => {
-    // Hoppa över dolda knappar. Många sajter har både ett synligt och ett
-    // gomt inloggnings-/registreringsformulär, och utan den här kontrollen
-    // kan vi klicka på den gömda knappen och ingenting händer.
+    // Skip hidden buttons. Many sites have both a visible and a hidden login or
+    // registration form, and without this check we can click the hidden button and
+    // nothing happens.
     if (el.disabled) return false;
     if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
     return true;
   });
 }
 
-/** Alla tänkbara klickbara element, även vanliga länkar. */
+/** Every clickable element we can think of, plain links included. */
 const CONTROL_SELECTOR = 'button, a, [role="button"]';
 
 /**
- * Klickar knappen vars text matchar något av mönstren. Returnerar texten eller null.
- * `exclude` kan innehålla redan klickade texter, så vi inte fastnar i en knapp
- * vars klick inte gav något resultat.
+   * Clicks the button whose text matches one of the patterns. Returns the text or null.
+ * `exclude` can contain already clicked texts so we do not get stuck in a
+   * whose click did not give any result.
  *
- * Knappar i en dialog/modell prioriteras: på sajter med en hero-knapp i sidhuvudet
- * och en modal på lagt steg i DOM:en är det modalens knapp som är nästa steg.
+   * Buttons in a dialog or modal come first: on sites with a hero button in the
+   * header and a modal placed late in the DOM, the modal button is the next step.
  */
 function clickButtonMatching(patterns, label, exclude) {
   const candidates = [];
@@ -408,16 +408,16 @@ function clickButtonMatching(patterns, label, exclude) {
   return { text: chosen.text.slice(0, 40), fullText: chosen.text, label, element: chosen.btn };
 }
 
-// Leverantörer av social inloggning. Vi klickar ALDRIG dessa — användaren har
-// inga sådana konton, och att göra det skulle skapa ett konto hen inte kan öppna.
+// Providers of social login. We NEVER click these: use an e mail account
+// instead, and doing that would create an account the user did not intend.
 const SOCIAL_PROVIDERS = [
   'google', 'apple', 'microsoft', 'facebook', 'twitter', 'x.com', 'linkedin',
   'github', 'gitlab', 'sso', 'single sign', 'saml', 'okta', 'auth0',
 ];
 
-// Knappar som leder vidare mot ett e-postformulär. Listan är medvetigt snäv —
-// vi ska aldrig klicka generiska marknadsförlåtanden som "Try for free", eftersom
-// de kan leda till en helt annan sida än registreringen.
+// Buttons that lead on towards an e mail form. The list is deliberately
+// narrow so we never click generic marketing promises like "Try for free".
+// they can lead to a completely different page than the registration.
 const SIGNUP_ADVANCE = [
   'sign up', 'signup', 'register', 'create account',
   'continue with email', 'sign up with email', 'use email',
@@ -426,9 +426,9 @@ const SIGNUP_ADVANCE = [
 ];
 
 /**
- * Cookie-/samtyckesbanners ligger ofta överst i sidan och blockerar knapparna
- * under sig. Vi gör oss av med dem först: "acceptera" om det finns, annars
- * "avvisa icke-väsentliga", vilket stänger de flesta banners.
+ * Cookie and consent banners often sit at the top of the page and cover the
+ * buttons under them. We get rid of them first: "accept" if there is one, otherwise
+ * "reject non essential", which closes most banners.
  */
 function dismissConsentBanners() {
   const accept = [
@@ -447,10 +447,10 @@ function dismissConsentBanners() {
 }
 
 /**
- * Kryssar i kryssrutor som måste vara ikryssade för att formuläret ska gå att
- * skicka: Terms, sekretess, åldersbekräftelse — och sådant som sajten själv
- * markerar som required. Det är samma sak en människa gör med musen; allt
- * arbete efteråt (t.ex. proof-of-work) gör sidan själv i sin egen kod.
+   * Ticks the checkboxes that must be checked for the form to be submittable
+ * to submit: Terms, privacy, age confirmation, and whatever the site marks as
+ * required. It is the same thing a human does with a mouse, and any extra
+ * work afterwards (for example proof of work) the page does in its own code.
  */
 function checkConsentCheckboxes() {
   const termsWords = /(terms|privacy|policy|agree|accept|consent|i.?m at least|age|18|villkor|godkänn|samtycker|accepter|zustimmung|accepter|şartlar|onay|شروط|موافقة|inte en robot)/i;
@@ -462,7 +462,7 @@ function checkConsentCheckboxes() {
       box.closest?.('label')?.innerText || box.getAttribute('aria-label') || box.id || ''
     ).trim();
 
-    // Krävs fältet uttryckligen, eller handlar det om villkor/samtycke?
+    // Is the field explicitly required, or is this about terms and consent?
     const needed = box.required === true || termsWords.test(label);
     if (!needed) continue;
 
@@ -476,8 +476,8 @@ function checkConsentCheckboxes() {
 }
 
 /**
- * Finns det någon landkontroll på sidan? Används för att skilja på "landet gick
- * inte att sätta" (verkligt fel) och "sidan frågar inte efter land" (inget fel).
+ * Is there any country control on the page? Used to tell "we were asked for a
+ * country but could not set it" (a real error) from "the page does not ask
  */
 function pageHasCountryControl() {
   for (const sel of deepQueryAll('select')) {
@@ -491,15 +491,15 @@ function pageHasCountryControl() {
   });
 }
 
-/** Finns ett synligt e-post- eller lösenordsfält på sidan just nu? */
+/** Is there a visible e mail or password field on the page right now? */
 function hasSignupFields() {
   const f = findInputs();
   return !!(f.email || f.password);
 }
 
 /**
- * Normaliserar landtext: gemener, bort diacriter och extra mellanslag. Så att
- * "Sverige", "sverige" och " SVERIGE " jämförs lika.
+ * Normalizes country text: lowercase, diacritics removed, extra spaces gone.
+   * "Sverige", "sverige" and " SVERIGE " compare as equal.
  */
 function normalizeCountryText(value) {
   return String(value == null ? '' : value)
@@ -515,12 +515,12 @@ function escapeRegExp(s) {
 }
 
 /**
- * Matchar landets namn/kod mot en textsnutt — med ORDGRÄNS.
+ * Matches the country name or code against a text snippet, with a WORD BOUNDARY.
  *
- * Det här är avgörande för korrektheten. En ren delsträngsmatchning gör att
- * koden "NO" träffar "Korea North" och "SE" träffar "Senegal", varefter
- * tillägget rapporterar ett landval det aldrig gjorde. Två- och
- * trebokstavsformer måste därför matcha som hela ord, aldrig som delsträng.
+ * This is decisive for correctness. A plain substring match goes wrong, because
+ * the code "NO" hits "North Korea" and "SE" hits "Senegal", which would make us
+   * the extension reports a country choice it never made. Two and three letter
+   * forms must therefore match as whole words, never as substrings.
  */
 function matchesCountryAlias(text, aliases) {
   const t = normalizeCountryText(text);
@@ -529,18 +529,18 @@ function matchesCountryAlias(text, aliases) {
     const a = normalizeCountryText(raw);
     if (!a) return false;
     if (t === a) return true;
-    // Ordgräns: "no" får inte matcha "north", bara "no" eller "norge (no)".
+    // Word boundary: "no" must not match "north", only "no" or "norge (no)".
     return new RegExp(`(^| )${escapeRegExp(a)}($| )`).test(t);
   });
 }
 
 /**
- * Klickar på ett element som en användare skulle. Många sajter bygger sina
- * listboxer på pointer-events och reagerar inte alls på en enkel .click() —
- * Radix/Headless UI kräver hela kedjan pointerdown → mouseup → click.
+ * Clicks an element the way a user would. Many sites build their
+ * listboxes on pointer events and do not react at all to a plain .click(), so
+ * Radix and Headless UI need the full pointerdown, mouseup, click chain.
  */
 function userClick(el) {
-  // composed: true — annars stannar händelserna inne i shadow rooten och
+    // composed: true, otherwise the events stay inside the shadow root and
   // custom elementet (t.ex. <w-button>) reagerar inte alls.
   const opts = { bubbles: true, cancelable: true, composed: true, view: window, pointerId: 1, isPrimary: true };
   try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch {}
@@ -551,9 +551,9 @@ function userClick(el) {
 }
 
 /**
- * Sajter använder ofta en egen listbox i stället för <select>: en knapp som
- * öppnar en <ul role="listbox"> med <li role="option">. Vi öppnar knappen och
- * klickar önskat alternativ.
+ * Sites often use their own listbox instead of a <select>: a button that
+ * opens a <ul role="listbox"> with <li role="option"> inside. We open the
+ * button and click the option we want.
  */
 async function chooseFromCustomListbox(triggerPattern, optionAliases) {
   const triggers = visibleControls('button, [role="combobox"], a, [role="button"]');
@@ -573,16 +573,16 @@ async function chooseFromCustomListbox(triggerPattern, optionAliases) {
     .filter((el) => el.offsetParent !== null);
   if (!options.length) return false;
 
-  // Ordgränsad matchning — aldrig delsträng på korta landkoder.
+    // Word boundary matching, never a substring for short country codes.
   const target = options.find((o) => matchesCountryAlias(textOf(o), optionAliases));
 
   if (!target) return false;
   userClick(target);
   await new Promise((r) => setTimeout(r, 400));
 
-  // Bekräfta att valet faktiskt fastnade. Vi kräver två saker: att knappens
-  // text har ändrats från platshållaren ("välj land") OCH att den nu innehåller
-  // det valda landet med ordgräns. Annars låtsas vi att det gick bra.
+  // Confirm that the choice actually stuck. We require two things: that the
+  // button text changed from the placeholder ("select country") AND that it now
+  // contains the chosen country by word boundary. Otherwise we pretend it worked.
   const after = visibleControls('button, [role="combobox"]');
   const changed = after.some((el) => {
     const now = normalizeCountryText(textOf(el));
@@ -593,8 +593,8 @@ async function chooseFromCustomListbox(triggerPattern, optionAliases) {
 }
 
 /**
- * Väljer land — antingen i en vanlig <select> eller i en anpassad listbox.
- * Returnerar vilken väg som användes, så popupen kan visa det.
+ * Chooses a country, either in a normal <select> or in a custom listbox.
+ * Returns which path was used, so the popup can show it.
  */
 async function setCountry(countryCode) {
   const country = countryByCode(countryCode);
@@ -606,15 +606,15 @@ async function setCountry(countryCode) {
     const optionsText = [...sel.options].map((o) => o.textContent).join(' ');
     const looksLikeCountry = COUNTRY_WORDS.test(meta) || matchesCountryAlias(optionsText, country.names);
     if (!looksLikeCountry) continue;
-    // strict: slår av delsträngsmatchning så "SE" inte kan träffa "Senegal".
+    // strict turns off substring matching so "SE" cannot hit "Senegal",
     if (setSelectValue(sel, country.code, { synonyms: country.names, strict: true })) {
       sel.classList.add(HIGHLIGHT_CLASS);
       return { via: 'select', country: country.names[0] };
     }
   }
 
-  // 2) Anpassad listbox: knapp vars text nämner land. Ordgränsade nyckelord,
-  // så att en knapp med t.ex. texten "Korea North" inte ses som landväljare.
+  // 2) Custom listbox: a button whose text names a country. Word bounded keywords,
+  // so a button with text like "North Korea" is not seen as a country picker.
   const viaButton = await chooseFromCustomListbox(
     /\b(välj land|select country|choose country|select your country|choose your country|country|land)\b/i,
     [country.code, ...country.names]
@@ -625,12 +625,12 @@ async function setCountry(countryCode) {
 }
 
 /**
- * Klickar sig fram till registreringsformuläret på sajter som kräver ett par
- * extra steg (t.ex. "Sign up" -> "Continue with Email"). Processen är begränsad
- * till några klick och vi rör aldrig social inloggning.
+   * Clicks its way to the registration form on sites that require an extra
+   * step (for example "Sign up" then "Continue with Email"). The process is limited
+   * to a few clicks and we never touch social login.
  *
- * Varje knapptext klickas högst en gång: annars fastnar vi på "Sign up" i sidhuvudet
- * som ligger kvar bakom modalen, i stället för att gå vidare till nästa steg.
+   * Each button text is clicked at most once, otherwise we get stuck on "Sign up" in
+ * the header that stays behind the modal instead of moving on to the next step.
  */
 async function advanceToSignupForm(maxClicks = 4) {
   const actions = [];
@@ -643,7 +643,7 @@ async function advanceToSignupForm(maxClicks = 4) {
     if (SOCIAL_PROVIDERS.some((s) => hit.text.includes(s))) break;
     tried.add(hit.fullText);
     actions.push(hit.text);
-    // Låt sidan reagera innan vi letar efter nästa knapp.
+    // Let the page react before we look for the next button.
     await new Promise((r) => setTimeout(r, 1200));
   }
   return { actions, hasFields: hasSignupFields() };
@@ -660,8 +660,8 @@ function findSubmitButton(mode) {
     if (mode === 'login' && loginWords.test(text)) return btn;
   }
 
-  // Synliga submit-knappar i prioritetsordning: type=submit, eller den första
-  // knappen i den synliga formulärkortet.
+    // Visible submit buttons in priority order: type=submit, or the
+  // the button in the visible form card.
   const submit = visibleControls('button[type="submit"], input[type="submit"]')[0];
   if (submit) return submit;
 
@@ -683,16 +683,16 @@ function findOtpInputs() {
     (el) => el.offsetParent !== null && !el.disabled
   );
 
-  // Antalet fält som uttryckligen bara tar emot ett tecken. Det är det
-  // starkaste signalen för en "en siffra per ruta"-layout, och den väger tyngre
-  // än bredden — bredden är CSS-beroende och har i praktiken pendlat mellan
-  // ~40 px och ~180 px för samma slags rutlayout.
+  // The number of fields that explicitly accept a single character. It is the
+  // strongest signal for a one digit per box layout, and it outweighs
+    // than the width, because the width depends on CSS and in practice has
+  // a width of about 40 px versus about 180 px for the same kind of box layout.
   const oneCharInputs = all.filter(
     (el) => parseInt(el.getAttribute('maxlength') || '99', 10) === 1
   );
   const manyOneCharBoxes = oneCharInputs.length >= 4;
 
-  // 1) Flera små rutor — varje input tar emot 1 tecken
+    // 1) Several small boxes, where each input accepts one character
   let digitBoxes = all.filter((el) => {
     const ml = parseInt(el.getAttribute('maxlength') || '99', 10);
     const type = (el.type || 'text').toLowerCase();
@@ -701,7 +701,7 @@ function findOtpInputs() {
     const isTypable = type === 'tel' || type === 'text' || type === 'number' || el.inputMode === 'numeric';
     if (!isTypable) return false;
     if (ml === 1) return true;
-    // Utan maxlength får vi gissa på bredden i stället.
+    // Without maxlength we have to guess based on the width instead.
     return ml > 1 && rect.width < 100;
   });
 
@@ -727,15 +727,15 @@ function findOtpInputs() {
     return { type: 'multi', inputs: digitBoxes };
   }
 
-  // 2) Enskilt fält — autocomplete one-time-code, eller namngivet med code/otp/pin
+    // 2) A single field, either autocomplete one-time-code or named code/otp/pin
   const single = all.find((el) => {
     const combined = `${el.name} ${el.id} ${el.placeholder} ${el.autocomplete} ${el.className} ${findLabelText(el)}`.toLowerCase();
     const type = (el.type || '').toLowerCase();
     const ml = parseInt(el.getAttribute('maxlength') || '99', 10);
     const hasOtpAttr = el.autocomplete === 'one-time-code' || el.getAttribute('data-otp') !== null || el.getAttribute('data-verify') !== null;
     // En ruta i en "en siffra per ruta"-layout ska ALDRig tolkas som ett
-    // enda fält för hela koden — annars hamnar alla siffror i ruta ett och
-    // verifieringen misslyckas. (Det hände på Vend-liknande sidor.)
+    // single field for the whole code, otherwise all the digits end up in box one
+    // and the verification fails. (That happened on Vend like sites.)
     if (manyOneCharBoxes && ml === 1) return false;
     return (
       hasOtpAttr ||
@@ -749,7 +749,7 @@ function findOtpInputs() {
 
   if (single) return { type: 'single', inputs: [single] };
 
-  // 3) Fallback: fält med inputmode=numeric eller autocomplete=one-time-code
+    // 3) Fallback: fields with inputmode=numeric or autocomplete one time code
   const fallback = all.find((el) => {
     const type = (el.type || '').toLowerCase();
     const ml = parseInt(el.getAttribute('maxlength') || '99', 10);
@@ -771,10 +771,10 @@ function findOtpInputs() {
 function fillOtpCode(code, autoSubmit = true) {
   injectStyles();
   const otp = String(code).replace(/\D/g, '');
-  if (!otp) return { success: false, error: 'Ogiltig kod' };
+  if (!otp) return { success: false, error: 'Invalid code' };
 
   const found = findOtpInputs();
-  if (!found) return { success: false, error: 'Hittade inget kodfält på sidan' };
+  if (!found) return { success: false, error: 'No code field found on the page' };
 
   if (found.type === 'multi') {
     const digits = otp.split('');
@@ -786,7 +786,7 @@ function fillOtpCode(code, autoSubmit = true) {
         input.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: digits[i], inputType: 'insertText' }));
       }
     });
-    // Fokusera första tomma rutan, eller sista om alla är ifyllda
+    // Focus the first empty box, or the last one when all are filled
     const firstEmpty = found.inputs.find((inp, idx) => !digits[idx]);
     if (firstEmpty) firstEmpty.focus();
     else found.inputs[found.inputs.length - 1].focus();
@@ -834,8 +834,8 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
   const fields = findInputs();
   const filled = { email: false, password: false, username: false, name: false, gender: false, birthDate: false, emailConfirm: false, country: false };
 
-  // Fält vi hittade men inte kunde fylla. Användaren behöver veta detta,
-  // annars ser en ofullständig ifylld form ut som om allt gick bra.
+  // Fields we found but could not fill. The user needs to know this,
+    // otherwise an incomplete filled form looks like everything went well.
   const missing = [];
   const report = {};
 
@@ -843,7 +843,7 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     setInputValue(fields.email, profile.email);
     filled.email = true;
   }
-  // Bekräftelsefält för e-post ska ha exakt samma adress.
+    // The e mail confirmation field must hold exactly the same address.
   if (fields.emailConfirm) {
     setInputValue(fields.emailConfirm, profile.email);
     filled.emailConfirm = true;
@@ -901,8 +901,8 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     const [year, month, day] = profile.birthDate.split('-');
     if (fields.birthDate) {
       if (fields.birthDate.tagName === 'SELECT') {
-        // Ett enda datum-fält som är en <select> innehåller sällan hela ISO-datumet.
-        // Prova datumet, sedan delarna, sedan bara året innan vi ger upp.
+    // A single date field that is a <select> rarely holds a full ISO date
+        // Try the whole date, then the parts, then only the year before giving up.
         const ok =
           setSelectValue(fields.birthDate, profile.birthDate) ||
           setSelectValue(fields.birthDate, `${year}-${month}-${day}`) ||
@@ -939,9 +939,9 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     }
   }
 
-  // Synliga fält som vi inte känner igen alls. Vi räknar bara text-liknande
-  // kontroller — kryssrutor, sökfält och submitknappar räknas inte, annars
-  // skulle popupen varna om sådant på varje sajt.
+  // Visible fields we do not recognize at all. We only count text like
+    // controls: checkboxes, search fields and submit buttons do not count,
+    // otherwise the popup would warn about those on every site.
   const known = new Set([
     fields.email, fields.emailConfirm, fields.password, fields.confirmPassword, fields.username,
     fields.firstName, fields.lastName, fields.fullName, fields.country,
@@ -954,14 +954,14 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
       if (known.has(el)) return false;
       const tag = el.tagName.toLowerCase();
       if (tag !== 'select' && tag !== 'textarea' && !FILLABLE_TYPES.has((el.type || '').toLowerCase())) return false;
-      // Tomma eller redan ifyllda fält behöver inget.
+      // Empty or already filled fields need nothing.
       return !el.value;
     }).length;
   if (unknownCount > 0) missing.push(`otherFields(${unknownCount})`);
 
-  // Finns det något alls att fylla i? Utan e-post- eller lösenordsfält har vi
-  // inte fyllt i något, och det ska vi inte påstå. Det händer på sajter där
-  // formuläret först visas efter att man klickat igenom en triss.
+  // Is there anything at all to fill? Without an e mail or password field we have
+  // not filled anything, and we must not claim that we did. It happens on sites
+  // where the form only appears after clicking through several pages.
   const noForm = !fields.email && !fields.password && !fields.username;
   if (noForm) {
     return {
@@ -970,7 +970,7 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     };
   }
 
-  // Kryssrutor som måste vara ikryssade innan formuläret går att skicka.
+  // Checkboxes that must be ticked before the form can be submitted
   const checkboxes = checkConsentCheckboxes();
 
   // Land: vanlig <select> eller anpassad listbox.
@@ -991,10 +991,10 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
         filled.country = true;
         report.country = picked;
       } else if (pageHasCountryControl()) {
-        // Här FINNS en landkontroll men vi kunde inte sätta den. Det är ett
+        // Here there IS a country control but we could not set it. That is a
         // verkligt fel. Om sidan saknar landkontroll helt (t.ex. Vend, som bara
-        // frågar efter e-post) säger vi ingenting — "country missing" vore då
-        // en lögn.
+    // asks for an e mail) we say nothing, because "country missing" would be a
+    // lie.
         missing.push('country');
       }
     }
@@ -1013,9 +1013,9 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
 }
 
 /**
- * Förbereder sidan inför en registrering: stänger cookie-banners, klickar oss
- * fram till formuläret och kryssar sedan i Terms. Terms-kryssrutan kontrolleras
- * sist eftersom den vanligtvis ligger i en modal som öppnas under trichten.
+   * Prepares the page for a registration: closes cookie banners, clicks its way
+   * to the form and then ticks Terms. The Terms checkbox is checked
+ * last, because it usually sits in a modal that opens during the
  */
 async function prepareForRegistration() {
   const consent = dismissConsentBanners();
@@ -1031,9 +1031,9 @@ async function prepareForRegistration() {
 }
 
 /**
- * Läser av en kod som redan syns på sidan. Används av den lokala testsidan,
- * som visar koden på skärmen i stället för att mejla den. Vi läser koden
- * på samma sätt en människa gör: från OTP-fälten, eller från den synliga texten.
+ * Reads a code that is already visible on the page. Used by the local test
+ * page that shows the code on screen instead of mailing it. We read the code
+   * the same way a human does: from the OTP fields, or from the visible text.
  */
 function readVisibleCode() {
   const found = findOtpInputs();
@@ -1044,8 +1044,8 @@ function readVisibleCode() {
     if (digits.length >= 4) return { code: digits, from: 'inputs' };
   }
 
-  // Fallback: ett fristående 4-8-siffrigt tal i den synliga texten, gärna
-  // i närheten av orden "kod" / "code".
+    // Fallback: a standalone four to eight digit number in the visible text,
+    // preferably near the words "kod" or "code".
   const text = document.body?.innerText || '';
   const labelled = text.match(
     /(?:code|kod|pin|otp|verification|verifiering|bekräftelse)[:\s#-]{0,4}(\d{4,8})/i
@@ -1056,9 +1056,9 @@ function readVisibleCode() {
 }
 
 /**
- * Läser ut vad en verifieringssida faktiskt svarar. Används efter att
- * tillägget öppnat en verifieringslänk, så att vi bara markerar kontot
- * som verifierat när sidan faktiskt bekräftar det (och inte vid t.ex.
+   * Reads what a verification page actually says. Used after the
+ * the extension opened a verification link, so we only mark the account as
+ * verified when the page actually confirms it, and not for example when
  * "expired"/"invalid").
  */
 function verificationOutcome() {
@@ -1074,11 +1074,11 @@ function verificationOutcome() {
     return {
       verified: false,
       failed: true,
-      reason: 'Verifieringssidan säger: "' + (m ? m[0] : 'ogiltig') + '".',
+      reason: 'The verification page says: "' + (m ? m[0] : 'invalid') + '".',
     };
   }
 
-  // Sidan kan också bekräfta via URL:en (t.ex. /email-verification?status=success)
+  // The page can also confirm through the URL (for example /email-verification?status=success)
   if (/(verified|activated|confirmed|success)/.test(url) && !/(pending|expired|invalid)/.test(url)) {
     return { verified: true, failed: false, via: 'url' };
   }
@@ -1092,17 +1092,17 @@ function verificationOutcome() {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'ping') {
-    // Vi svarar även med hur många ifyllbara fält som syns just nu, så att
-    // anroparen kan vänta in att formuläret faktiskt renderats. Under en
-    // omladdning svarar content scriptet en stund innan sidan är klar.
+    // We also answer with how many fillable fields are visible right now, so that
+    // the caller can wait for the form to actually be rendered. During a
+    // reload the content script answers a moment before the page is ready.
     const visibleFillable = deepQueryAll('input, select, textarea')
       .filter((el) => el.offsetParent !== null && !el.disabled).length;
     sendResponse({ pong: true, hasForm: hasSignupFields(), fields: visibleFillable });
     return;
   }
   if (request.action === 'fillRegistration') {
-    // Asynkront eftersom landvalet kan öppna en listbox. Utan "return true"
-    // skulle Chrome stänga kanalen innan svaret skickas.
+    // Asynchronous because choosing a country can open a listbox. Without "return true"
+    // Chrome would close the channel before the response is sent.
     fillForm(request.profile, 'register', request.autoSubmit !== false)
       .then((result) => sendResponse({ success: true, result }))
       .catch((err) => sendResponse({ success: false, error: String(err) }));
@@ -1130,8 +1130,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     sendResponse({ success: true, ...readVisibleCode() });
   }
   if (request.action === 'prepareForRegistration') {
-    // Asynkront: klicktrichten väntar mellan stegen. Utan "return true" skulle
-    // Chrome stänga kanalen innan svaret skickas och popupen fick inget.
+  // Asynchronous: the click loop waits between the steps. Without "return true"
+  // Chrome closes the channel before the response is sent and the popup gets nothing.
     prepareForRegistration()
       .then(sendResponse)
       .catch((err) => sendResponse({ success: false, error: String(err) }));

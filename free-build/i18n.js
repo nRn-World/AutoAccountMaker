@@ -1,15 +1,15 @@
 /**
- * i18n.js — Språkhantering för AutoAccountMaker.
+ * i18n.js - language handling for AutoAccountMaker.
  *
- * Innehåller ordlistor för engelska, svenska, turkiska, arabiska, spanska, tyska
- * och franska. Engelska är standard. Alla sidor laddar den här filen och anropar
- * applyTranslations() för att översätta element med data-i18n / data-i18n-*.
+ * Contains dictionaries for English, Swedish, Turkish, Arabic, Spanish, German
+ * and French. English is the default. Every page loads this file and calls
+ * applyTranslations() to translate elements with data-i18n / data-i18n-*.
  */
 
 const SUPPORTED_LANGUAGES = ['en', 'sv', 'tr', 'ar', 'es', 'de', 'fr'];
 const DEFAULT_LANGUAGE = 'en';
 
-// Språk som skrivs höger-till-vänster.
+// Languages written right to left.
 const RTL_LANGUAGES = ['ar'];
 
 const LANGUAGE_NAMES = {
@@ -45,7 +45,7 @@ const DICT = {
       statusTestsite: 'Local test page',
       statusOtpFound: 'Verification page detected! Click "Verify code automatically".',
       statusUnverified: 'Account created — waiting for verification. Click "Verify code automatically".',
-      // Plural hanteras här: tidigare lät denna säga "Found 3 saved account".
+      // Plural is handled here: this used to say "Found 3 saved account".
       statusAccounts: (n) => (n === 1
         ? 'Found 1 saved account. Click "Log in".'
         : `Found ${n} saved accounts. Click "Log in".`),
@@ -1808,7 +1808,7 @@ function normalizeLanguage(lang) {
   return SUPPORTED_LANGUAGES.includes(lang) ? lang : DEFAULT_LANGUAGE;
 }
 
-/** Slå upp "a.b.c" i den aktuella ordlistan, med engelska som fallback. */
+/** Looks up "a.b.c" in the active dictionary, with English as fallback. */
 function lookup(dict, key) {
   return key.split('.').reduce((acc, part) => (acc == null ? undefined : acc[part]), dict);
 }
@@ -1820,7 +1820,7 @@ function t(key, ...args) {
   return value;
 }
 
-/** Sätter <html lang> och dir (RTL för arabiska). */
+/** Sets <html lang> and dir (RTL for Arabic). */
 function applyDocumentLanguage(lang, root) {
   const normalized = normalizeLanguage(lang);
   currentLanguage = normalized;
@@ -1835,7 +1835,7 @@ function applyDocumentLanguage(lang, root) {
 }
 
 /**
- * Översätter alla element med data-i18n i ett underträd.
+ * Translates every element with data-i18n inside a subtree.
  *   data-i18n            -> textContent
  *   data-i18n-placeholder-> placeholder
  *   data-i18n-title      -> title
@@ -1864,7 +1864,7 @@ function applyTranslations(root, lang) {
   }
 }
 
-/** Laddar språket från inställningarna och översätter sidan. */
+/** Loads the language from settings and translates the page. */
 async function initI18n() {
   try {
     const res = await chrome.runtime.sendMessage({ action: 'getSettings' });
@@ -1877,9 +1877,9 @@ async function initI18n() {
 }
 
 /**
- * Översätter ett svar från background.js. Background returnerar errorCode
- * (en stabil nyckel); message används bara som sista utväg.
- * Placeholders som {status} och {code} fylls i från fält på svaret.
+ * Translates a response from background.js. Background returns an errorCode
+ * (a stable key); message is only used as a last resort.
+ * Placeholders like {status} and {code} are filled from fields on the response.
  */
 function translateError(result, fallbackKey) {
   if (!result) return fallbackKey ? t(fallbackKey) : '';
