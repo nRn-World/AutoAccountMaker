@@ -6,6 +6,20 @@ temporary address, and logs you in. One click.
 **Free version:** one automated sign up every three hours.
 **Pro:** removes the wait.
 
+<p align="center">
+  <a href="https://ko-fi.com/s/da557f599c"><img src="docs/premium-license.png" alt="AutoAccountMaker Pro, lifetime license" width="560"></a>
+</p>
+
+<p align="center">
+  <a href="https://ko-fi.com/s/da557f599c"><strong>Get Pro on Ko-fi</strong></a>
+  &nbsp;&#9679;&nbsp;
+  <a href="https://ko-fi.com/s/da557f599c">ko-fi.com/s/da557f599c</a>
+</p>
+
+A lifetime license for one browser. It removes the three hour wait, unlocks
+unlimited sign ups, and includes every future update. The license key arrives
+by e mail right after the payment.
+
 ![AutoAccountMaker, the full flow](docs/demo.gif)
 
 *A real run against the built in test page. The account is created, verified,

@@ -127,10 +127,12 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
   s = removeElement(s, '<div class="license" id="licenseBox">', 'popup.html license box');
 
   // Instead a single line that states the free tier, so the user is not
-  // surprised when the button locks after a run.
+  // surprised when the button locks after a run. The note is itself the link to
+  // the shop: the free build has no license box left, so this is the only place
+  // a free user can find out that Pro exists.
   s = s.replace(
     '  <button class="btn-verify" id="btnVerify" style="display:none;"',
-    '  <div class="free-note" id="freeNote" data-i18n="popup.freeTierNote">Free version: one automated sign-up every 3 hours.</div>\n\n  <button class="btn-verify" id="btnVerify" style="display:none;"'
+    '  <a class="free-note" id="freeNote" href="https://ko-fi.com/s/da557f599c" target="_blank" rel="noopener noreferrer" data-i18n="popup.freeTierNote">Free version: one automated sign-up every 3 hours.</a>\n\n  <button class="btn-verify" id="btnVerify" style="display:none;"'
   );
 
   // license.js does not survive, so the tag has to go. Leaving it makes the
@@ -140,7 +142,7 @@ fs.copyFileSync(path.join(FREE_SRC, 'cooldown.js'), path.join(OUT, 'cooldown.js'
   // CSS block for the license. Anchored on class names, never on the comment
   // text, so translating the popup cannot silently break the strip.
   s = s.replace(/    \/\*[^*]*\*\/\n    \.license \{[\s\S]*?\.license-deactivate:hover \{[^}]*\}\n/,
-    `    .free-note {\n      margin-top: 8px;\n      padding: 7px 10px;\n      background: #1e293b;\n      border: 1px solid #334155;\n      border-radius: 8px;\n      font-size: 10px;\n      color: #64748b;\n      text-align: center;\n    }\n`);
+    `    .free-note {\n      display: block;\n      margin-top: 8px;\n      padding: 7px 10px;\n      background: #1e293b;\n      border: 1px solid #334155;\n      border-radius: 8px;\n      font-size: 10px;\n      color: #64748b;\n      text-align: center;\n      text-decoration: none;\n      transition: border-color 0.15s, color 0.15s;\n    }\n    .free-note:hover {\n      color: #e2e8f0;\n      border-color: #10b981;\n    }\n`);
 
   if (s.includes('license.js')) {
     problems.push('popup.html: license.js is still present in a script tag');
