@@ -124,11 +124,15 @@ function zip(outName, manifestModifier = null) {
     }
 
     // Run from inside store-build so manifest.json lands at the zip root.
-    execFileSync('powershell', [
-      '-NoProfile',
-      '-Command',
-      `Compress-Archive -Path * -DestinationPath '${out.replace(/'/g, "''")}' -Force`,
-    ], { cwd: SRC, stdio: 'inherit' });
+    if (process.platform === 'win32') {
+      execFileSync('powershell', [
+        '-NoProfile',
+        '-Command',
+        `Compress-Archive -Path * -DestinationPath '${out.replace(/'/g, "''")}' -Force`,
+      ], { cwd: SRC, stdio: 'inherit' });
+    } else {
+      execFileSync('zip', ['-r', '-q', out, '.'], { cwd: SRC, stdio: 'inherit' });
+    }
   } finally {
     fs.writeFileSync(manifestPath, originalManifest, 'utf8');
   }

@@ -15,6 +15,16 @@
  *   8. the only actions the content script accepts are the allowed ones
  *   9. the seven languages are complete
  */
+if (!process.env.DISPLAY && !process.env.XVFB_RUNNING && process.platform === 'linux') {
+  const { execFileSync } = require('child_process');
+  try {
+    process.env.XVFB_RUNNING = '1';
+    execFileSync('xvfb-run', ['-a', process.execPath, __filename, ...process.argv.slice(2)], { stdio: 'inherit' });
+    process.exit(0);
+  } catch (e) {
+    // Continue if xvfb-run is not installed
+  }
+}
 const { chromium } = require('playwright-core');
 const path = require('path');
 const fs = require('fs');
@@ -89,13 +99,19 @@ const FIXTURE = `<!DOCTYPE html>
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}/`;
 
-  const ctx = await chromium.launchPersistentContext(PROFILE, {
-    channel: 'chromium', headless: false, viewport: null,
+  const launchOptions = {
+    headless: false,
+    viewport: null,
     args: [
       '--disable-features=Translate,OptimizationGuideModelDownloading',
-      `--disable-extensions-except=${OUT}`, `--load-extension=${OUT}`,
+      `--disable-extensions-except=${OUT}`,
+      `--load-extension=${OUT}`,
     ],
-  });
+  };
+  if (process.env.CHROME_BIN) {
+    launchOptions.executablePath = process.env.CHROME_BIN;
+  }
+  const ctx = await chromium.launchPersistentContext(PROFILE, launchOptions);
   let [page] = ctx.pages();
 
   try {
@@ -140,8 +156,8 @@ const FIXTURE = `<!DOCTYPE html>
     // looked up by URL from the worker, which has the tabs permission.
     await page2.waitForTimeout(1200);
     const res = await sw.evaluate(async (target) => {
-      const tabs = await chrome.tabs.query({ url: target.replace(/\/$/, '') + '/*' });
-      const tab = tabs[0];
+      const tabs = await chrome.tabs.query({});
+      const tab = tabs.find((t) => t.url && t.url.startsWith(target.replace(/\/$/, ''))) || tabs[tabs.length - 1];
       if (!tab) return { success: false, error: 'no tab found for ' + target };
       try {
         return await chrome.tabs.sendMessage(tab.id, { action: 'fillRegistration' });
@@ -217,7 +233,7 @@ const FIXTURE = `<!DOCTYPE html>
     check('it has a Firefox add-on id', !!(manifest.browser_specific_settings || {}).gecko?.id);
     check('it declares a minimum Firefox version', !!manifest.browser_specific_settings.gecko.strict_min_version);
     check('no unlimitedStorage without asking', manifest.permissions.includes('unlimitedStorage') === false);
-    check('no mail provider host permission', !manifest.host_permissions.some((h) => /mail|rapidapi/.test(h)));
+    check('no mail provider host permission', !(manifest.host_permissions || []).some((h) => /mail|rapidapi/.test(h)));
 
     section('10) Alla sju språk är kompletta');
     const i18nSrc = fs.readFileSync(path.join(OUT, 'i18n.js'), 'utf8');

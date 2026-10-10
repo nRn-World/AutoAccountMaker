@@ -10,5 +10,8 @@
     "build": "node build-store.mjs",
     "test": "node test-store-build.cjs",
     "pack": "node pack.mjs && node verify-zip.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.40.0"
   }
 }

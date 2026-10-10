@@ -108,6 +108,11 @@ function removeElement(text, openTag, label) {
 // ---------------------------------------------------------------------------
 // 1) Clean the directory
 // ---------------------------------------------------------------------------
+if (!fs.existsSync(SRC)) {
+  console.log('Notice: extension/ (private source tree) is not present. free-build/ is already included in the repository.');
+  process.exit(0);
+}
+
 fs.rmSync(OUT, { recursive: true, force: true });
 copyDir(SRC, OUT);
 
