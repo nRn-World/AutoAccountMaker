@@ -37,10 +37,14 @@ for (const zipName of zips) {
   const zipPath = path.join(DIST, zipName);
   fs.rmSync(TMP, { recursive: true, force: true });
   fs.mkdirSync(TMP, { recursive: true });
-  execFileSync('powershell', [
-    '-NoProfile', '-Command',
-    `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${TMP.replace(/'/g, "''")}' -Force`,
-  ], { stdio: 'inherit' });
+  if (process.platform === 'win32') {
+    execFileSync('powershell', [
+      '-NoProfile', '-Command',
+      `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${TMP.replace(/'/g, "''")}' -Force`,
+    ], { stdio: 'inherit' });
+  } else {
+    execFileSync('unzip', ['-o', '-q', zipPath, '-d', TMP], { stdio: 'inherit' });
+  }
 
   check('manifest.json is at the zip root', fs.existsSync(path.join(TMP, 'manifest.json')));
   check('there is no extra wrapping folder', fs.readdirSync(TMP).length > 3);

@@ -52,7 +52,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const SRC = path.join(ROOT, 'extension');
+const SRC = fs.existsSync(path.join(ROOT, 'extension'))
+  ? path.join(ROOT, 'extension')
+  : path.join(ROOT, 'free-build');
 const MANUAL = path.join(ROOT, 'store-manual');
 const OUT = path.join(ROOT, 'store-build');
 

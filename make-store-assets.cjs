@@ -11,6 +11,16 @@
  *
  * Run: node make-store-assets.cjs
  */
+if (!process.env.DISPLAY && !process.env.XVFB_RUNNING && process.platform === 'linux') {
+  const { execFileSync } = require('child_process');
+  try {
+    process.env.XVFB_RUNNING = '1';
+    execFileSync('xvfb-run', ['-a', process.execPath, __filename, ...process.argv.slice(2)], { stdio: 'inherit' });
+    process.exit(0);
+  } catch (e) {
+    // Continue if xvfb-run is not installed
+  }
+}
 const { chromium } = require('playwright-core');
 const path = require('path');
 const fs = require('fs');
@@ -32,8 +42,7 @@ const PROFILE = path.join(os.tmpdir(), 'aam-store-assets-profile');
 (async () => {
   if (fs.existsSync(PROFILE)) fs.rmSync(PROFILE, { recursive: true, force: true });
 
-  const ctx = await chromium.launchPersistentContext(PROFILE, {
-    channel: 'chromium',
+  const launchOptions = {
     headless: false,
     viewport: null,
     args: [
@@ -42,7 +51,11 @@ const PROFILE = path.join(os.tmpdir(), 'aam-store-assets-profile');
       `--disable-extensions-except=${EXT}`,
       `--load-extension=${EXT}`,
     ],
-  });
+  };
+  if (process.env.CHROME_BIN) {
+    launchOptions.executablePath = process.env.CHROME_BIN;
+  }
+  const ctx = await chromium.launchPersistentContext(PROFILE, launchOptions);
 
   const page = await ctx.newPage();
 

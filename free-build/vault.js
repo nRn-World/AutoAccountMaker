@@ -365,7 +365,7 @@ modalConfirm.addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `autaccountmaker-backup-${Date.now()}.enc`;
+    a.download = `autoaccountmaker-backup-${Date.now()}.enc`;
     a.click();
     URL.revokeObjectURL(url);
     modalMsg.textContent = t('vault.msgExportOk');

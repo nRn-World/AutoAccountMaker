@@ -638,35 +638,6 @@ btnRegister.addEventListener('click', async () => {
   btnVerify.textContent = t('popup.btnFetchOtp');
 
   // Wait for user to click Next on the page and then click Verify code when ready
-  return;
-
-  if (verifyResult?.success) {
-    completeSteps();
-    if (verifyResult.method === 'otp') {
-      log(t('popup.logVerifyDoneCode', verifyResult.code), 'success');
-    } else {
-      log(t('popup.logVerifyDoneLink'), 'success');
-    }
-    statusText.textContent = t('popup.statusDone');
-  } else {
-    finishSteps(5, false);
-    log(translateError(verifyResult, 'popup.logVerifyFailed'), 'error');
-
-    if (verifyResult?.link) {
-      showLink(verifyResult.link);
-    }
-    if (verifyResult?.code) {
-      log(t('popup.logCodeManual', verifyResult.code), 'info');
-    }
-
-    statusText.textContent = verifyResult?.link
-      ? t('popup.statusNotConfirmed')
-      : t('popup.statusUnverifiedNote');
-  }
-
-  btnRegister.disabled = false;
-  btnLogin.disabled = false;
-  btnVerify.disabled = false;
 });
 
 btnVerify.addEventListener('click', async () => {
