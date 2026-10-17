@@ -1,0 +1,25 @@
+<!-- sizes: 1280x800 -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Modern sites</title>
+<link rel="stylesheet" href="_common.css">
+<style>
+body{width:1280px;height:800px}
+.wrap{padding:44px 64px}
+.t{text-align:center;margin:52px 0 30px}.t h1{margin:12px 0 12px;font-size:46px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.c{padding:24px 28px;height:252px}
+.c h3{font-size:21px;margin-bottom:6px}.c p{color:var(--m);font-size:16px;line-height:1.4;margin-bottom:16px}
+.code{font-family:Consolas,monospace;font-size:14px;background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:13px 15px;color:#94a3b8;line-height:1.55}
+.code b{color:#34d399;font-weight:600}.code u{text-decoration:none;color:#7dd3fc}
+.dd{background:#0b1220;border:1px solid var(--line);border-radius:10px;overflow:hidden;width:300px;font-size:15px}
+.dd div{padding:6px 14px}.dd .h{border-bottom:1px solid var(--line);color:#6ee7b7;display:flex;justify-content:space-between}.dd .sel{background:rgba(16,185,129,.18);color:#6ee7b7}.dd div:not(.h):not(.sel){color:#94a3b8}
+.otp{display:flex;gap:10px}.otp span{width:46px;height:56px;border-radius:10px;background:#0b1220;border:1.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#6ee7b7}
+.chips{display:flex;flex-wrap:wrap;gap:9px}.chips span{background:#1e293b;border:1px solid var(--line);border-radius:8px;padding:7px 13px;font-size:15px;color:#cbd5e1}
+</style></head><body><div class="wrap">
+<div class="brand" style="position:absolute;left:64px;top:36px"><img src="../icons-export/icon-128x128.png" alt="">AutoAccountMaker</div>
+<div class="t"><div class="eyebrow">Built for the modern web</div><h1>Works where simple form fillers <em>give up</em></h1></div>
+<div class="grid">
+<div class="c glass"><h3>Shadow DOM and web components</h3><p>Reaches fields on sites that build them as custom elements.</p><div class="code">&lt;w-textfield&gt;<br>&nbsp;&nbsp;<u>#shadow-root</u><br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;input name="email"&gt; <b>filled</b></div></div>
+<div class="c glass"><h3>Custom dropdowns, handled</h3><p>Native selects and hand-built listboxes alike.</p><div class="dd"><div class="h"><span>Country</span><span>&#9662;</span></div><div>Norway</div><div class="sel">Sweden</div><div>Finland</div></div></div>
+<div class="c glass"><h3>Automatic verification</h3><p>Reads the code from the e-mail, in one field or six small boxes.</p><div class="otp"><span>4</span><span>8</span><span>2</span><span>9</span><span>1</span><span>6</span></div></div>
+<div class="c glass"><h3>Seven languages</h3><p>The whole interface switches instantly. Arabic is laid out right to left.</p><div class="chips"><span>English</span><span>Svenska</span><span>T&uuml;rk&ccedil;e</span><span>Espa&ntilde;ol</span><span>Deutsch</span><span>Fran&ccedil;ais</span><span>&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577;</span></div></div>
+</div></div></body></html>

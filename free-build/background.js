@@ -53,6 +53,13 @@ function flashBadge(text, color, holdMs) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// "Start over" bumps this number. A polling loop that started under an older
+// number stops at its next round instead of finishing a flow the user abandoned.
+let verificationEpoch = 0;
+function cancelledResult() {
+  return { success: false, errorCode: 'cancelled', error: 'Cancelled.' };
+}
+
 /**
  * MV3 service workers are shut down after about 30 s of inactivity, and a
  * setTimeout does not count as activity. Every API call resets the timer, so
@@ -334,12 +341,29 @@ async function createMailTmAccount(password) {
   const username = generateUsername().toLowerCase();
   const email = `${username}@${domain}`;
 
-  const createRes = await fetch(`${MAILTM_BASE}/accounts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address: email, password }),
-  });
-  if (!createRes.ok) { const e = new Error('Kunde inte skapa mail.tm-konto.'); e.errorCode = 'mailtmCreateFailed'; throw e; }
+  // mail.tm limits how fast accounts can be created from one address (HTTP 429).
+  // A short wait and a retry gets through a brief limit. A longer limit is reported as it is.
+  let createRes;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    createRes = await fetch(`${MAILTM_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: email, password }),
+    }).catch(() => null);
+    if (createRes?.ok) break;
+    if (createRes && createRes.status !== 429 && createRes.status < 500) break;
+    if (attempt < 3) {
+      const retryAfter = Number(createRes?.headers.get('retry-after')) || 0;
+      await sleep(Math.min(Math.max(retryAfter * 1000, 1500 * attempt), 6000));
+      heartbeat();
+    }
+  }
+  if (!createRes?.ok) {
+    const e = new Error('Could not create the mail.tm account.');
+    e.errorCode = createRes?.status === 429 ? 'mailtmRateLimited' : 'mailtmCreateFailed';
+    e.status = createRes?.status || 0;
+    throw e;
+  }
 
   const tokenRes = await fetch(`${MAILTM_BASE}/token`, {
     method: 'POST',
@@ -432,7 +456,9 @@ async function generateProfile() {
 }
 
 // Words that indicate a link leads to a verification.
-const VERIFY_URL_WORDS = /(confirm|verif|activat|validat|signup|sign-?up|register|auth|token|magic-?link|check|approve|complete)/i;
+// Only words that really mean "verify this e-mail". Generic words such as register, signup,
+// auth, check and complete also appear in the site's own sign-up links and must not count.
+const VERIFY_URL_WORDS = /(confirm|verif|activat|validat|magic-?link|approve|token)/i;
 const VERIFY_ANCHOR_WORDS = /(verify|verifiera|bekräfta|bekrafta|confirm|confirma|activate|aktivera|validate|validera|accept|godkänn|godkann|continue|fortsätt|fortsatt|complete|slutför|sign in|logga in)/i;
 
 // Words that indicate a link leads to a verification.
@@ -462,6 +488,17 @@ function scoreVerificationLink(href, anchorText) {
   if (VERIFY_URL_WORDS.test(url)) score += 100;
   if (anchorText && VERIFY_ANCHOR_WORDS.test(anchorText)) score += 60;
   if (TOKEN_PARAMS.test(url)) score += 50;
+
+  // A bare page address ("https://site.com/register#") carries no secret, so it cannot
+  // verify anything. Without a query string, a long path or a verification word it is
+  // an ordinary navigation link in the mail footer or header.
+  try {
+    const u = new URL(url);
+    const pathSegments = u.pathname.split('/').filter(Boolean);
+    if (!u.search && pathSegments.length <= 1 && !VERIFY_URL_WORDS.test(u.pathname)) score -= 120;
+  } catch {
+    /* an address that cannot be parsed keeps its score */
+  }
 
 // A link that points back to the mail service is never the verification.
   return score;
@@ -626,11 +663,13 @@ function parseMailResult(html, text, subject, baseUrl) {
 }
 
 async function pollMailTmForVerification(token, baseUrl, maxAttempts = 40) {
+  const epoch = verificationEpoch;
   updateBadge('...', '#f59e0b');
   await sleep(6000);
   heartbeat();
 
   for (let i = 0; i < maxAttempts; i++) {
+    if (epoch !== verificationEpoch) { clearBadge(); return cancelledResult(); }
     updateBadge(`${i + 1}/${maxAttempts}`, '#3b82f6');
     try {
       const res = await fetch(`${MAILTM_BASE}/messages`, {
@@ -687,11 +726,13 @@ async function pollTempMailForVerification(emailHash, rapidApiKey, baseUrl, maxA
     'x-rapidapi-host': 'privatix-temp-mail-v1.p.rapidapi.com',
   };
 
+  const epoch = verificationEpoch;
   updateBadge('...', '#f59e0b');
   await sleep(6000);
   heartbeat();
 
   for (let i = 0; i < maxAttempts; i++) {
+    if (epoch !== verificationEpoch) { clearBadge(); return cancelledResult(); }
     updateBadge(`${i + 1}/${maxAttempts}`, '#3b82f6');
     try {
       const res = await fetch(
@@ -841,41 +882,62 @@ async function waitForVerificationOutcome(tabId, timeoutMs = 30000) {
 }
 
 async function applyVerificationToTab(tabId, mailResult, settings) {
-// 1) A verification link is the strongest signal, so open it first.
-  if (mailResult.links?.length > 0 && settings.autoClickVerification) {
+  // If the mail has a code and the page is waiting for one, the code is the answer.
+  // Links in the same mail are then just navigation or marketing.
+  let otpPageWaiting = false;
+  if (mailResult.otp) {
+    try {
+      await injectContentScript(tabId);
+      const detect = await chrome.tabs.sendMessage(tabId, { action: 'detectOtpPage' }).catch(() => null);
+      otpPageWaiting = !!detect?.isOtpPage;
+    } catch {
+      /* no answer: treat as not waiting */
+    }
+  }
+
+  // 1) A verification link is the strongest signal, so open it first, unless the
+  //    page is already asking for a code that we have.
+  let linkFailure = null;
+  if (mailResult.links?.length > 0 && settings.autoClickVerification && !otpPageWaiting) {
     const link = mailResult.links[0];
     const opened = await openVerificationLink(link);
     if (!opened.opened) {
-      return { method: 'link', link, opened: false, success: false, code: opened.code, error: opened.reason };
+      linkFailure = { method: 'link', link, opened: false, success: false, code: opened.code, error: opened.reason };
     }
 
-    if (!mailResult.linkConfident) {
+    if (!linkFailure && !mailResult.linkConfident) {
 // The link was found but is not certainly a verification link. We open it
 // in the background but do not claim the account is verified.
-      return {
+      linkFailure = {
         method: 'link',
         link,
         opened: true,
         success: false,
         unconfirmed: true,
         errorCode: 'unconfirmed',
-        error: 'Hittade en möjlig länk men kunde inte bekräfta att den verifierar kontot. Öppna den manuellt om du vill.',
+        error: 'Found a possible link but could not confirm that it verifies the account. Open it manually if you want.',
       };
     }
 
-    const outcome = await waitForVerificationOutcome(opened.tabId);
-    if (outcome.verified) {
-      return { method: 'link', link, opened: true, success: true, verifiedUrl: outcome.url };
+    if (!linkFailure) {
+      const outcome = await waitForVerificationOutcome(opened.tabId);
+      if (outcome.verified) {
+        return { method: 'link', link, opened: true, success: true, verifiedUrl: outcome.url };
+      }
+      linkFailure = {
+        method: 'link',
+        link,
+        opened: true,
+        success: false,
+        errorCode: outcome.errorCode || 'unconfirmed',
+        error: outcome.reason,
+      };
     }
-    return {
-      method: 'link',
-      link,
-      opened: true,
-      success: false,
-      errorCode: outcome.errorCode || 'unconfirmed',
-      error: outcome.reason,
-    };
+
+    // No code to fall back on: report why the link failed. With a code we go on and try it.
+    if (!mailResult.otp) return linkFailure;
   }
+
 
   // 2) Annars: letta upp en kod och fyll i den.
   if (mailResult.otp) {
@@ -914,6 +976,7 @@ async function applyVerificationToTab(tabId, mailResult, settings) {
     };
   }
 
+  if (typeof linkFailure !== 'undefined' && linkFailure) return linkFailure;
   return { method: 'none', success: false, errorCode: 'nothingExtracted', error: 'Hittade mail men ingen verifieringslänk eller kod kunde extraheras.' };
 }
 
@@ -1321,6 +1384,20 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           break;
         }
 
+        case 'refundRunSlot': {
+          sendResponse(await refundFreeRunSlot());
+          break;
+        }
+
+        case 'cancelVerification': {
+          verificationEpoch += 1;
+          verificationInProgress = false;
+          await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
+          clearBadge();
+          sendResponse({ success: true });
+          break;
+        }
+
         case 'startPendingVerification': {
           await chrome.storage.local.set({
             pendingVerification: { tabId: request.tabId, account: request.account },
@@ -1342,9 +1419,21 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         }
 
         case 'importEncrypted': {
-          const decrypted = await decryptData(request.encrypted, request.password);
-          const imported = JSON.parse(decrypted);
-          if (!Array.isArray(imported)) throw new Error('Ogiltig filstruktur.');
+          let imported;
+          try {
+            imported = JSON.parse(await decryptData(request.encrypted, request.password));
+          } catch {
+            // Wrong password, damaged file or not a backup at all: AES-GCM and
+            // atob both throw, and the generic code would show an unrelated message.
+            const e = new Error('Wrong password or damaged backup file.');
+            e.errorCode = 'backupDecryptFailed';
+            throw e;
+          }
+          if (!Array.isArray(imported)) {
+            const e = new Error('Invalid file structure.');
+            e.errorCode = 'invalidBackup';
+            throw e;
+          }
           const settings = await getSettings();
           const data = await chrome.storage.local.get({ accounts: [] });
           const merged = [...imported];
@@ -1363,7 +1452,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           sendResponse({ success: false, errorCode: 'unknownAction', error: 'Okänd åtgärd.' });
       }
     } catch (err) {
-      sendResponse({ success: false, errorCode: err?.errorCode || 'generic', error: err.message || String(err) });
+      sendResponse({ success: false, errorCode: err?.errorCode || 'generic', status: err?.status, error: err.message || String(err) });
     }
   })();
   return true;

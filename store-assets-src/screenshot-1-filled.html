@@ -1,87 +1,55 @@
 <!-- sizes: 1280x800 -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>A form filled in</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Create an account in one click</title>
+<link rel="stylesheet" href="_common.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    width: 1280px; height: 800px;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #f1f5f9; color: #0f172a;
-    display: flex; align-items: center; justify-content: center;
-    padding: 0;
-  }
-  .wrap { padding: 64px; width: 100%; }
-  .card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.10);
-    padding: 34px 38px; width: 780px;
-  }
-  h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-  .sub { color: #64748b; font-size: 14px; margin-bottom: 24px; }
-  .row { display: flex; gap: 14px; margin-bottom: 14px; }
-  label { color: #475569; display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
-  input[type=text], input[type=email], input[type=password] {
-    background: #fff; border: 1.5px solid #10b981; border-radius: 7px;
-    color: #0f172a; font-family: inherit; font-size: 14px;
-    padding: 9px 11px; width: 100%;
-  }
-  input[type=password] { border-color: #cbd5e1; }
-  .country { border-color: #10b981; }
-  .check { align-items: center; display: flex; font-size: 14px; gap: 11px; margin-top: 24px; }
-  .box {
-    background: #fff; border: 1.5px solid #94a3b8; border-radius: 4px;
-    flex: none; height: 19px; width: 19px;
-  }
-  .you { color: #b45309; font-size: 12.5px; margin-left: 4px; white-space: nowrap; }
-  .submit-row { align-items: center; display: flex; gap: 14px; margin-top: 26px; }
-  .submit {
-    background: #10b981; border: none; border-radius: 7px; color: #fff;
-    font-family: inherit; font-size: 15px; font-weight: 600; padding: 11px 20px;
-  }
-  .legend { margin-top: 30px; }
-  .dot { background: #10b981; border-radius: 3px; display: inline-block; height: 12px; margin-right: 8px; vertical-align: -1px; width: 12px; }
-  .dot.grey { background: #94a3b8; }
-  .cap { color: #64748b; font-size: 13px; margin-top: 8px; }
-</style>
-</head>
-<body>
-  <div class="wrap">
-  <div class="card">
-    <h2>Create your account</h2>
-    <div class="sub">Every green field was filled in by the extension.</div>
-
-    <div class="row">
-      <div style="flex:1"><label>First name</label><input type="text" value="Maria"></div>
-      <div style="flex:1"><label>Last name</label><input type="text" value="Lindqvist"></div>
-    </div>
-    <div class="row">
-      <div style="flex:1"><label>E mail</label><input type="email" value="maria.lindqvist@example.com"></div>
-      <div style="flex:1"><label>Username</label><input type="text" value="mlindqvist"></div>
-    </div>
-    <div class="row">
-      <div style="flex:1"><label>Password</label><input type="password" value="...................."></div>
-      <div style="flex:1"><label>Country</label><input type="text" class="country" value="Sweden"></div>
-    </div>
-
-    <div class="check">
-      <span class="box"></span>
-      <span>I agree to the Terms of Service</span>
-      <span class="you">you tick this</span>
-    </div>
-
-    <div class="submit-row">
-      <button class="submit">Create account</button>
-      <span class="you">you press this</span>
-    </div>
-
-    <div class="legend">
-      <div class="cap"><span class="dot"></span>Filled in for you, you can still change anything</div>
-      <div class="cap" style="margin-top:6px;"><span class="dot grey"></span>Left to you on purpose</div>
-    </div>
-  </div>
-  </div>
-</body>
-</html>
+body{width:1280px;height:800px}
+.top{position:absolute;left:64px;top:48px}
+.head{position:absolute;left:64px;top:150px;width:440px}
+.head h1{margin:14px 0 18px;font-size:44px}
+.pills{margin-top:26px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.win{position:absolute;left:560px;top:70px;width:560px;height:560px;overflow:hidden}
+.bar{height:44px;background:#0d1627;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 16px}
+.bar i{width:11px;height:11px;border-radius:50%;background:#334155}
+.url{margin-left:14px;flex:1;background:#0b1220;border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--d);font-size:13px}
+.form{background:#f8fafc;height:100%;padding:26px 32px;color:#0f172a}
+.form h2{font-size:22px;margin-bottom:4px}.form .s{color:#64748b;font-size:13.5px;margin-bottom:16px}
+.r{display:flex;gap:14px;margin-bottom:11px}.f{flex:1}
+label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px}
+.in{border:1.5px solid #10b981;background:#ecfdf5;border-radius:7px;padding:8px 11px;font-size:14px;position:relative}
+.in b{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#10b981;font-size:13px}
+.cb{display:flex;align-items:center;gap:10px;margin-top:16px;font-size:14px}
+.cb span.b{width:18px;height:18px;border:1.5px solid #10b981;border-radius:4px;background:#10b981;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.btn{margin-top:16px;display:inline-block;background:#10b981;color:#fff;font-weight:600;padding:11px 22px;border-radius:8px;font-size:15px}
+.pop{position:absolute;left:915px;top:150px;width:340px;z-index:3;border-radius:16px;overflow:hidden;background:#0f172a;border:1px solid #334155;box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 0 6px rgba(16,185,129,.12);padding:16px}
+.ph{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;margin-bottom:12px}.ph img{width:22px}
+.st{background:#1e293b;border:1px solid #334155;border-radius:9px;color:#cbd5e1;font-size:12.5px;padding:9px 11px;margin-bottom:10px}
+.rw{display:flex;gap:8px}.b1{flex:1;background:#10b981;color:#04211a;border-radius:9px;font-size:12.5px;font-weight:700;padding:10px 4px;text-align:center}
+.b2{flex:1;background:#3b82f6;color:#fff;border-radius:9px;font-size:12.5px;font-weight:700;padding:10px 4px;text-align:center}
+.prog{margin-top:12px;background:#0b1220;border:1px solid #22314a;border-radius:10px;padding:11px 12px}
+.prog small{display:block;color:#64748b;font-size:10px;letter-spacing:.08em;margin-bottom:7px;font-weight:700}
+.prog div{display:flex;align-items:center;gap:9px;font-size:12px;color:#cbd5e1;padding:3px 0}
+.prog i{width:16px;height:16px;border-radius:50%;background:#10b981;color:#04211a;font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.cred{margin-top:10px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 12px;font-family:Consolas,monospace;font-size:12px}
+.cred small{display:block;font-family:'Segoe UI',sans-serif;color:#64748b;font-size:9.5px;letter-spacing:.06em;margin-top:5px}.cred small:first-child{margin-top:0}
+</style></head><body>
+<div class="top"><div class="brand"><img src="../icons-export/icon-128x128.png" alt="">AutoAccountMaker</div></div>
+<div class="head"><div class="eyebrow">Test any website</div>
+<h1>Make a test account in <em>one click</em></h1>
+<p class="lead">Temporary e-mail and made-up details, so you can try a site without using your own.</p>
+<div class="pills"><span class="pill"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>No real information needed</span>
+<span class="pill"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Verifies the e-mail and logs you in</span></div></div>
+<div class="win glass"><div class="bar"><i></i><i></i><i></i><div class="url">https://example.com/signup</div></div>
+<div class="form"><h2>Create your account</h2><div class="s">Every green field was filled in by the extension.</div>
+<div class="r"><div class="f"><label>First name</label><div class="in">Alex<b>&#10003;</b></div></div><div class="f"><label>Last name</label><div class="in">Rivera<b>&#10003;</b></div></div></div>
+<div class="r"><div class="f"><label>E-mail</label><div class="in">nexus4612@tempbox.example<b>&#10003;</b></div></div></div>
+<div class="r"><div class="f"><label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;<b>&#10003;</b></div></div><div class="f"><label>Country</label><div class="in">Sweden<b>&#10003;</b></div></div></div>
+<div class="r"><div class="f"><label>Date of birth</label><div class="in">1990-04-12<b>&#10003;</b></div></div><div class="f"><label>Gender</label><div class="in">Other<b>&#10003;</b></div></div></div>
+<div class="cb"><span class="b">&#10003;</span>I agree to the Terms of Service</div>
+<div class="btn">Create account</div></div></div>
+<div class="pop"><div class="ph"><img src="../icons-export/icon-128x128.png" alt="">AutoAccountMaker</div>
+<div class="st">Registration and verification done. Click "Log in".</div>
+<div class="rw"><div class="b1">Register automatically</div><div class="b2">Log in</div></div>
+<div class="prog"><small>PROGRESS</small>
+<div><i>&#10003;</i>Creating a temporary e-mail</div><div><i>&#10003;</i>Filling in the form</div><div><i>&#10003;</i>Submitting the form</div><div><i>&#10003;</i>Saving the account</div><div><i>&#10003;</i>Entering the verification code</div><div><i>&#10003;</i>Done, you can log in</div></div>
+<div class="cred"><small>E-MAIL</small>nexus4612@tempbox.example<small>PASSWORD</small>&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div></div>
+</body></html>

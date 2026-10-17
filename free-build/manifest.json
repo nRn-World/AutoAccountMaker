@@ -7,11 +7,10 @@
     "activeTab",
     "scripting",
     "storage",
-    "unlimitedStorage",
     "tabs",
-    "windows",
     "sidePanel"
   ],
+  "minimum_chrome_version": "116",
   "host_permissions": [
     "https://api.mail.tm/*",
     "https://privatix-temp-mail-v1.p.rapidapi.com/*",

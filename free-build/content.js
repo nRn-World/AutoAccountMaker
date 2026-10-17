@@ -252,10 +252,19 @@ function findInputs() {
     } else if (/user|username|användarnamn|kullanici|usuario|benutzer|utilisateur/.test(combined) && type === 'text') {
       if (!result.username) result.username = el;
     } else if (
-      /(^|[\s_@.-])(mail|epost|e-post|correo|posta)([\s_.@-]|$)/.test(combined) &&
-      (type === 'text' || type === 'tel')
+      // "email" in any spelling is unambiguous. Bare "mail" and "posta" need word
+      // boundaries, otherwise "mailing address" would count as an e-mail field.
+      (/(e-?mail|e-?post|correo)|(^|[\s_@.-])(mail|posta)([\s_.@-]|$)/.test(combined) || el.inputMode === 'email') &&
+      (type === 'text' || type === 'tel' || el.inputMode === 'email')
     ) {
-      if (!result.email) result.email = el;
+      const isConfirm = /confirm|bekräft|bekraft|repeat|again|verify|validation|retype/.test(combined);
+      if (isConfirm && result.email) {
+        if (!result.emailConfirm) result.emailConfirm = el;
+      } else if (!result.email) {
+        result.email = el;
+      } else if (!result.emailConfirm) {
+        result.emailConfirm = el;
+      }
     } else if (type === 'password' || /pass|lösen|losen|parola|sifre|şifre|contraseña/.test(combined)) {
       if (!result.password) result.password = el;
       else if (!result.confirmPassword && /confirm|repeat|again|bekräft|tekrar|igen|confirmar/.test(combined)) {
@@ -665,12 +674,20 @@ function findSubmitButton(mode) {
     if (mode === 'login' && loginWords.test(text)) return btn;
   }
 
-    // Visible submit buttons in priority order: type=submit, or the
-  // the button in the visible form card.
-  const submit = visibleControls('button[type="submit"], input[type="submit"]')[0];
-  if (submit) return submit;
+  // No button with a register or login word. Take one that sounds like "go on" and
+  // never one that sounds like "go back". The first button on a page is often "Back".
+  const label = (b) => (b.textContent || b.value || b.getAttribute('aria-label') || '').trim();
+  const negative = /^(back|cancel|close|decline|no thanks|skip|dismiss|tillbaka|avbryt|stäng|geri|iptal|atrás|cancelar|zurück|abbrechen|retour|annuler)/i;
+  const positive = /(submit|continue|next|create|get started|proceed|send|done|nästa|fortsätt|skicka|skapa|devam|siguiente|continuar|weiter|suivant|continuer)/i;
 
-  return buttons[0] || null;
+  const best = buttons.find((b) => positive.test(label(b)) && !negative.test(label(b)));
+  if (best) return best;
+
+  // Visible submit buttons in priority order: type=submit, or the button in the visible form card.
+  const submit = visibleControls('button[type="submit"], input[type="submit"]')[0];
+  if (submit && !negative.test(label(submit))) return submit;
+
+  return buttons.find((b) => !negative.test(label(b))) || null;
 }
 
 function findVerifyButton() {
@@ -805,8 +822,13 @@ function fillOtpCode(code, autoSubmit = true) {
   }
 
   let submitted = false;
-  // User explicitly clicks Next / Create account themselves
-  /* autoSubmit disabled */
+  if (autoSubmit) {
+    const btn = findVerifyButton();
+    if (btn) {
+      setTimeout(() => btn.click(), 800);
+      submitted = true;
+    }
+  }
 
   return { success: true, submitted, digits: otp.length, fieldType: found.type };
 }
@@ -1000,8 +1022,21 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     }
   }
 
-  // Auto-submit removed: user must click Next / Create account themselves.
-  const submitted = false;
+  // Click the submit button a moment after the fields are filled, so the page
+  // has time to react to the input events first.
+  // A registration without an e-mail address filled in would only fail validation
+  // and leave the extension waiting for a mail that never comes. Leave the form to the user.
+  const emailMissing = mode === 'register' && !fields.email;
+  if (emailMissing) missing.push('email');
+
+  let submitted = false;
+  if (autoSubmit && !emailMissing) {
+    const btn = findSubmitButton(mode);
+    if (btn) {
+      setTimeout(() => btn.click(), 800);
+      submitted = true;
+    }
+  }
 
   return { filled, submitted, mode, missing, noForm: false, report, checkboxes };
 }

@@ -43,3 +43,9 @@ make-assets.mjs
 
 __pycache__/
 *.pyc
+
+license-private-key.json
+license-key.txt
+
+# Upload zips contain license.js, never commit them
+webstore-upload/
