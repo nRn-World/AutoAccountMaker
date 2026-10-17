@@ -5,6 +5,27 @@ const btnLogin = document.getElementById('btnLogin');
 const btnVerify = document.getElementById('btnVerify');
 const btnTest = document.getElementById('btnTest');
 const btnReset = document.getElementById('btnReset');
+const sponsorCard = document.getElementById('sponsorCard');
+const sponsorClose = document.getElementById('sponsorClose');
+
+// The sponsored link is an Adsterra Smartlink. It is shown to free users only, it is
+// labelled as sponsored, the user can hide it, and it only opens when the user clicks it.
+const SPONSOR_URL = 'https://asiafilm.org/4/b2b8c8a70e1ef0c78b4ba6a3fb971c30';
+let sponsorHidden = false;
+
+function renderSponsor() {
+  if (!sponsorCard) return;
+  sponsorCard.href = SPONSOR_URL;
+  sponsorCard.hidden = isPro || sponsorHidden;
+}
+
+sponsorClose?.addEventListener('click', (e) => {
+  // The close button sits inside the link, so keep the click from opening it.
+  e.preventDefault();
+  e.stopPropagation();
+  sponsorHidden = true;
+  renderSponsor();
+});
 
 // Bumped by "Start over": a flow that was running at that moment must not touch the screen afterwards.
 let resetCount = 0;
@@ -37,6 +58,7 @@ let licenseTimer = null;
  * warning when the lock is shut, so it is obvious why the button is dead.
  */
 function renderLicenseState(remainingMs = Math.max(0, cooldownUntil - Date.now())) {
+  renderSponsor();
   const licenseEntry = document.getElementById('licenseEntry');
   const btnBuy = document.getElementById('btnBuyPro');
 
