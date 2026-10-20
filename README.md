@@ -20,6 +20,10 @@ A lifetime license for one browser. It removes the three hour wait, unlocks
 unlimited sign ups, and includes every future update. The license key arrives
 by e mail right after the payment.
 
+<p align="center">
+  <img src="docs/launch.webp" alt="AutoAccountMaker launch video" width="300">
+</p>
+
 ![AutoAccountMaker, the full flow](docs/demo.gif)
 
 *A real run against the built in test page. The account is created, verified,
