@@ -127,6 +127,7 @@ const DICT = {
       stepDone: 'Done — you can log in',
       statusVerifying: 'Verifying...',
       statusVerified: 'Verification done — you can log in now.',
+      statusBlockedSite: 'Automated registration is not available for this site due to rights or security policies.',
     },
 
     options: {
@@ -404,6 +405,7 @@ const DICT = {
       stepDone: 'Klart — du kan logga in',
       statusVerifying: 'Verifierar...',
       statusVerified: 'Verifiering klar — du kan logga in nu.',
+      statusBlockedSite: 'Automatisk registrering är inte tillgänglig för denna webbplats på grund av rättigheter eller säkerhetspolicyer.',
     },
 
     options: {

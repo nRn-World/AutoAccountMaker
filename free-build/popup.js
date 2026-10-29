@@ -5,6 +5,9 @@ const btnLogin = document.getElementById('btnLogin');
 const btnVerify = document.getElementById('btnVerify');
 const btnTest = document.getElementById('btnTest');
 const btnReset = document.getElementById('btnReset');
+
+// Extension pages are chrome-extension:// in Chrome and moz-extension:// in Firefox.
+const EXT_PAGE = /^(chrome|moz)-extension:\/\//;
 const sponsorCard = document.getElementById('sponsorCard');
 const sponsorClose = document.getElementById('sponsorClose');
 
@@ -271,7 +274,7 @@ function sendToTab(tabId, msg) {
 
 function isUsableTab(url) {
   if (!url) return false;
-  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('chrome-extension://');
+  return url.startsWith('http://') || url.startsWith('https://') || EXT_PAGE.test(url || '');
 }
 
 function getSiteKey(url) {
@@ -458,11 +461,32 @@ async function findAccountForTab(tab) {
   return accounts[0];
 }
 
+// Sites where automated registration is blocked for legal or security reasons.
+const BLOCKED_DOMAINS = [
+  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'linkedin.com', 'tiktok.com', 'snapchat.com',
+  'google.com', 'microsoft.com', 'apple.com', 'amazon.com', 'ebay.com', 'craigslist.org',
+  'paypal.com', 'stripe.com', 'revolut.com', 'wise.com', 'binance.com', 'coinbase.com',
+  'bankid.com', 'skatteverket.se', 'forsakringskassan.se', 'polisen.se', 'regeringen.se',
+  'swedbank.se', 'nordea.se', 'seb.se', 'handelsbanken.se', 'avanza.se', 'klarna.com', 'qliro.com',
+  'netflix.com', 'disneyplus.com', 'hbo.com', 'spotify.com', 'youtube.com',
+  'gov', 'mil', 'edu' // Generic TLDs often sensitive
+];
+
+function isBlockedSite(url) {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    return BLOCKED_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
+  } catch {
+    return false;
+  }
+}
+
 async function init() {
   // Clear the badge when the popup is opened
   chrome.action.setBadgeText({ text: '' });
 
   await I18N.initI18n();
+  statusText.classList.remove('err');
 
   // License and cooldown must be visible right away, also on chrome:// pages.
   await refreshLicenseState();
@@ -484,8 +508,18 @@ async function init() {
     return;
   }
 
+  if (isBlockedSite(tab.url)) {
+    siteBadge.textContent = new URL(tab.url).hostname;
+    statusText.textContent = t('popup.statusBlockedSite');
+    statusText.classList.add('err');
+    btnRegister.disabled = true;
+    btnLogin.disabled = true; // Block login too for high-risk sites
+    pageReady = false;
+    return;
+  }
+
   pageReady = isUsableTab(tab.url);
-  const host = tab.url.startsWith('chrome-extension://')
+  const host = EXT_PAGE.test(tab.url || '')
     ? t('popup.statusTestsite')
     : new URL(tab.url).hostname;
   siteBadge.textContent = host;
@@ -498,7 +532,7 @@ async function init() {
     return;
   }
 
-  if (!tab.url.startsWith('chrome-extension://')) {
+  if (!EXT_PAGE.test(tab.url || '')) {
     const accRes = await sendMsg({ action: 'getAccountsForSite', hostname: new URL(tab.url).hostname });
     if (accRes?.accounts?.length > 0) {
       const unverified = accRes.accounts.find((a) => !a.verified);
@@ -564,7 +598,7 @@ btnRegister.addEventListener('click', async () => {
   const autoSubmit = settingsRes?.settings?.autoSubmitForm !== false;
 
   // The test page has several forms, so make sure we are on the registration step.
-  if (currentTab.url.startsWith('chrome-extension://')) {
+  if (EXT_PAGE.test(currentTab.url || '')) {
     await sendToTab(currentTab.id, { action: 'showRegisterStep' });
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -665,7 +699,7 @@ btnRegister.addEventListener('click', async () => {
   // Filled in. Next the account is saved, then the page submits the form.
   renderSteps(2);
 
-  const siteKey = currentTab.url.startsWith('chrome-extension://')
+  const siteKey = EXT_PAGE.test(currentTab.url || '')
     ? 'test-sida.local'
     : getSiteKey(currentTab.url);
 
@@ -794,7 +828,7 @@ btnLogin.addEventListener('click', async () => {
   // showed a half finished registration next to a successful login.
   stepsBox.classList.remove('visible');
 
-  const hostname = currentTab.url.startsWith('chrome-extension://')
+  const hostname = EXT_PAGE.test(currentTab.url || '')
     ? 'test-sida.local'
     : new URL(currentTab.url).hostname;
 
@@ -814,7 +848,7 @@ btnLogin.addEventListener('click', async () => {
 
   // The test page has several forms. Ask it to switch to the login step so
   // we do not fill the registration form.
-  if (currentTab.url.startsWith('chrome-extension://')) {
+  if (EXT_PAGE.test(currentTab.url || '')) {
     await sendToTab(currentTab.id, { action: 'showLoginStep' });
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -895,7 +929,7 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   I18N.applyTranslations(document, lang);
   renderLicenseState(isPro ? 0 : Math.max(0, cooldownUntil - Date.now()));
   if (currentTab) {
-    siteBadge.textContent = currentTab.url?.startsWith('chrome-extension://')
+    siteBadge.textContent = EXT_PAGE.test(currentTab.url || '')
       ? t('popup.statusTestsite')
       : safeHostname(currentTab.url);
   }

@@ -12,6 +12,7 @@ function injectStyles() {
     .${HIGHLIGHT_CLASS} {
       outline: 2px solid #10b981 !important;
       background-color: #ecfdf5 !important;
+      color: #064e3b !important;
       transition: outline 0.2s ease;
     }
   `;
@@ -290,16 +291,18 @@ function findInputs() {
     // Day/month/year. The three checks are independent if statements, not else if,
     // so an element matching "month" does not stop another from matching
     // "day". The other fields are still an else if chain above.
+    // "bday-day" etc. in autocomplete contains "day" and made month/year match the day regex (Yahoo).
+    const dmy = combined.replace(/bday-(day|month|year)/g, '');
     if (!result.birthYear && (tag === 'select' || type === 'number' || type === 'tel') &&
-        (/year|år|ano|jahr|année|año/.test(combined) || autoComplete === 'bday-year')) {
+        (/year|år|ano|jahr|année|año/.test(dmy) || autoComplete === 'bday-year')) {
       result.birthYear = el;
     }
     if (!result.birthMonth && (tag === 'select' || type === 'number' || type === 'tel') &&
-        (/month|månad|monat|mes|\bay\b/.test(combined) || name === 'mm' || id === 'mm' || autoComplete === 'bday-month')) {
+        (/month|månad|monat|mes|\bay\b/.test(dmy) || name === 'mm' || id === 'mm' || autoComplete === 'bday-month')) {
       result.birthMonth = el;
     }
     if (!result.birthDay && (tag === 'select' || type === 'number' || type === 'tel') &&
-        (/day|dag|día|gun|gün/.test(combined) || name === 'dd' || id === 'dd' || autoComplete === 'bday-day')) {
+        (/day|dag|día|gun|gün/.test(dmy) || name === 'dd' || id === 'dd' || autoComplete === 'bday-day')) {
       result.birthDay = el;
     }
 
@@ -1024,13 +1027,13 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
 
   // Click the submit button a moment after the fields are filled, so the page
   // has time to react to the input events first.
-  // A registration without an e-mail address filled in would only fail validation
+  // A registration without an identifier (email or username) filled in would only fail validation
   // and leave the extension waiting for a mail that never comes. Leave the form to the user.
-  const emailMissing = mode === 'register' && !fields.email;
-  if (emailMissing) missing.push('email');
+  const identifierMissing = mode === 'register' && !fields.email && !fields.username;
+  if (identifierMissing) missing.push('identifier');
 
   let submitted = false;
-  if (autoSubmit && !emailMissing) {
+  if (autoSubmit && !identifierMissing) {
     const btn = findSubmitButton(mode);
     if (btn) {
       setTimeout(() => btn.click(), 800);

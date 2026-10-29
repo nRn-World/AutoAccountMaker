@@ -19,9 +19,19 @@ if (typeof importScripts === 'function') {
 // ── Side Panel ─────────────────────────────────────────────────────────────
 // Open popup.html in Chrome's built-in side panel (docked to the browser,
 // stays open while the user interacts with the page).
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch(() => {});
+// BEGIN-CHROME-ONLY
+if (chrome.sidePanel?.setPanelBehavior) {
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch(() => {});
+}
+// END-CHROME-ONLY
+if (typeof browser !== 'undefined' && browser.sidebarAction && browser.action?.onClicked) {
+  // Firefox has no sidePanel API. Its sidebar is opened and closed from the toolbar button.
+  browser.action.onClicked.addListener(() => {
+    browser.sidebarAction.toggle().catch(() => {});
+  });
+}
 // ───────────────────────────────────────────────────────────────────────────
 
 function updateBadge(text, color = '#10b981') {
@@ -52,6 +62,21 @@ function flashBadge(text, color, holdMs) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 25000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 // "Start over" bumps this number. A polling loop that started under an older
 // number stops at its next round instead of finishing a flow the user abandoned.
@@ -329,7 +354,8 @@ async function getSettings() {
 }
 
 async function createMailTmAccount(password) {
-  const domainsRes = await fetch(`${MAILTM_BASE}/domains`);
+  console.log('[AAM] Creating mail.tm account...');
+  const domainsRes = await fetchWithTimeout(`${MAILTM_BASE}/domains`);
   const domainsData = await domainsRes.json();
   const domain = domainsData['hydra:member']?.[0]?.domain;
   if (!domain) {
@@ -340,12 +366,14 @@ async function createMailTmAccount(password) {
 
   const username = generateUsername().toLowerCase();
   const email = `${username}@${domain}`;
+  console.log('[AAM] Chosen email:', email);
 
   // mail.tm limits how fast accounts can be created from one address (HTTP 429).
   // A short wait and a retry gets through a brief limit. A longer limit is reported as it is.
   let createRes;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    createRes = await fetch(`${MAILTM_BASE}/accounts`, {
+    console.log(`[AAM] Create account attempt ${attempt}...`);
+    createRes = await fetchWithTimeout(`${MAILTM_BASE}/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: email, password }),
@@ -354,24 +382,47 @@ async function createMailTmAccount(password) {
     if (createRes && createRes.status !== 429 && createRes.status < 500) break;
     if (attempt < 3) {
       const retryAfter = Number(createRes?.headers.get('retry-after')) || 0;
-      await sleep(Math.min(Math.max(retryAfter * 1000, 1500 * attempt), 6000));
+      const wait = Math.min(Math.max(retryAfter * 1000, 1500 * attempt), 6000);
+      console.log(`[AAM] Rate limited or error, waiting ${wait}ms...`);
+      await sleep(wait);
       heartbeat();
     }
   }
   if (!createRes?.ok) {
+    console.error('[AAM] Failed to create mail.tm account', createRes?.status);
     const e = new Error('Could not create the mail.tm account.');
     e.errorCode = createRes?.status === 429 ? 'mailtmRateLimited' : 'mailtmCreateFailed';
     e.status = createRes?.status || 0;
     throw e;
   }
 
-  const tokenRes = await fetch(`${MAILTM_BASE}/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address: email, password }),
-  });
-  if (!tokenRes.ok) { const e = new Error('Kunde inte autentisera mail.tm.'); e.errorCode = 'mailtmAuthFailed'; throw e; }
+  // The new account can take a moment to be usable and /token is rate limited too,
+  // so retry instead of failing on the first 401/429/5xx.
+  let tokenRes;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    console.log(`[AAM] Token attempt ${attempt}...`);
+    tokenRes = await fetchWithTimeout(`${MAILTM_BASE}/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: email, password }),
+    }).catch(() => null);
+    if (tokenRes?.ok) break;
+    if (attempt < 5) {
+      const retryAfter = Number(tokenRes?.headers.get('retry-after')) || 0;
+      const wait = Math.min(Math.max(retryAfter * 1000, 1000 * attempt), 6000);
+      console.log(`[AAM] Token failed, waiting ${wait}ms...`);
+      await sleep(wait);
+      heartbeat();
+    }
+  }
+  if (!tokenRes?.ok) {
+    console.error('[AAM] Failed to get mail.tm token', tokenRes?.status);
+    const e = new Error('Kunde inte autentisera mail.tm.');
+    e.errorCode = 'mailtmAuthFailed';
+    throw e;
+  }
   const tokenData = await tokenRes.json();
+  console.log('[AAM] mail.tm account created successfully.');
 
   return {
     email,
@@ -383,6 +434,7 @@ async function createMailTmAccount(password) {
 }
 
 async function createTempMailAccount(rapidApiKey) {
+  console.log('[AAM] Creating temp-mail.org account...');
   if (!rapidApiKey) {
     const e = new Error('temp-mail.org kräver RapidAPI-nyckel. Ange den under Inställningar eller välj mail.tm.');
     e.errorCode = 'needRapidApiKey';
@@ -394,8 +446,9 @@ async function createTempMailAccount(rapidApiKey) {
     'x-rapidapi-host': 'privatix-temp-mail-v1.p.rapidapi.com',
   };
 
-  const domainsRes = await fetch(`${TEMPMAIL_RAPIDAPI}/request/domains/`, { headers });
+  const domainsRes = await fetchWithTimeout(`${TEMPMAIL_RAPIDAPI}/request/domains/`, { headers });
   if (!domainsRes.ok) {
+    console.error('[AAM] Failed to get temp-mail domains', domainsRes.status);
     const e = new Error('Kunde inte hämta temp-mail.org-domäner. Kontrollera RapidAPI-nyckeln.');
     e.errorCode = 'tempmailNoDomains';
     throw e;
@@ -411,6 +464,7 @@ async function createTempMailAccount(rapidApiKey) {
   const domain = rawDomain.replace(/^@/, '');
   const username = generateUsername().toLowerCase();
   const email = `${username}@${domain}`;
+  console.log('[AAM] temp-mail.org email chosen:', email);
 
   return {
     email,
@@ -786,7 +840,9 @@ async function injectContentScript(tabId) {
 }
 
 async function findOtpTab(originalTabId) {
-  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*', 'chrome-extension://*/*'] });
+  // Extension pages use chrome-extension:// in Chrome and moz-extension:// in Firefox.
+  const extScheme = new URL(chrome.runtime.getURL('')).protocol;
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*', `${extScheme}//*/*`] });
   for (const tab of tabs) {
     if (tab.id === originalTabId) continue;
     try {
@@ -1074,7 +1130,7 @@ async function runAutoVerification(account, tabId, baseUrl) {
 
 // The extension test page simulates the verification inside the page. Polling a
 // real inbox would be pointless, so we read the code off the page instead.
-  if (typeof baseUrl === 'string' && baseUrl.startsWith('chrome-extension://')) {
+  if (typeof baseUrl === 'string' && /^(chrome|moz)-extension:\/\//.test(baseUrl)) {
     await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
     return runLocalTestVerification(account, tabId, settings);
   }

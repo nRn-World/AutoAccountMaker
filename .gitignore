@@ -49,3 +49,6 @@ license-key.txt
 
 # Upload zips contain license.js, never commit them
 webstore-upload/
+
+# Store packages contain license.js, never commit them
+release/

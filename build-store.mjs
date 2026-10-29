@@ -59,7 +59,7 @@ const MANUAL = path.join(ROOT, 'store-manual');
 const OUT = path.join(ROOT, 'store-build');
 
 const SHOP_URL = 'https://ko-fi.com/s/da557f599c';
-const VERSION = '1.12.0';
+const VERSION = '1.13.2';
 const GECKO_ID = 'autoaccountmaker-form-filler@nrnworld.com';
 
 const problems = [];
@@ -152,22 +152,44 @@ for (const dir of ['csv-downloads', 'Screenshots']) {
   /** Remove a whole top level function plus its leading docblock. */
   const cutFn = (name, fnName) => {
     const lines = src.split('\n');
-    let start = -1;
+    let startLine = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (new RegExp(`^(async )?function ${fnName}\\b`).test(lines[i])) { start = i; break; }
+      if (new RegExp(`^(async )?function ${fnName}\\b`).test(lines[i].trim())) { startLine = i; break; }
     }
-    if (start === -1) { problems.push(`content.js: ${name} (${fnName} hittades inte)`); return; }
-    let from = start;
+    if (startLine === -1) { problems.push(`content.js: ${name} (${fnName} hittades inte)`); return; }
+
+    // Find the end of the function by counting braces.
+    let depth = 0;
+    let endLine = -1;
+    let foundStart = false;
+
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i];
+      for (let char of line) {
+        if (char === '{') {
+          depth++;
+          foundStart = true;
+        } else if (char === '}') {
+          depth--;
+        }
+      }
+      if (foundStart && depth === 0) {
+        endLine = i;
+        break;
+      }
+    }
+
+    if (endLine === -1) { problems.push(`content.js: ${name} (slutade inte med })`); return; }
+
+    // Find the start of the docblock.
+    let from = startLine;
     while (from > 0) {
       const prev = lines[from - 1].trim();
       if (prev === '' || prev.startsWith('*') || prev.endsWith('*/') || prev.startsWith('/**')) from--;
       else break;
     }
-    let to = start;
-    while (to < lines.length && lines[to] !== '}') to++;
-    if (to >= lines.length) { problems.push(`content.js: ${name} (slutade inte med })`); return; }
-    to++;
-    lines.splice(from, to - from);
+
+    lines.splice(from, endLine - from + 1);
     src = lines.join('\n');
     done.push(name);
   };
@@ -244,28 +266,31 @@ for (const dir of ['csv-downloads', 'Screenshots']) {
   }
 
   // No automatic submit after filling.
-  cut(
-    'content.js: no automatic submit in fillForm',
-`  // Auto-submit removed: user must click Next / Create account themselves.
-  const submitted = false;
-
-  return { filled, submitted, mode, missing, noForm: false, report, checkboxes };`,
-`  // Deliberately no submit here. Filling a form is what an accessibility tool
+  {
+    const from = /\/\/ Click the submit button a moment after the fields are filled[\s\S]*?return \{ filled, submitted, mode, missing, noForm: false, report, checkboxes \};/;
+    const to = `// Deliberately no submit here. Filling a form is what an accessibility tool
   // does; pressing the site's own submit button on the user's behalf is not.
-  return { filled, submitted: false, mode, missing, noForm: false, report, checkboxes };`
-  );
+  return { filled, submitted: false, mode, missing, noForm: false, report, checkboxes };`;
+    if (from.test(src)) {
+      src = src.replace(from, to);
+      done.push('content.js: no automatic submit in fillForm (regex)');
+    } else {
+      problems.push('content.js: no automatic submit in fillForm (regex hittades inte)');
+    }
+  }
 
   // No automatic submit after a one time code either.
-  cut(
-    'content.js: no automatic submit in fillOtpCode',
-`  let submitted = false;
-  // User explicitly clicks Next / Create account themselves
-  /* autoSubmit disabled */
-
-  return { success: true, submitted, digits: otp.length, fieldType: found.type };`,
-`  // No automatic submit. The user confirms the code themselves.
-  return { success: true, submitted: false, digits: otp.length, fieldType: found.type };`
-  );
+  {
+    const from = /let submitted = false;\s*if \(autoSubmit\) \{[\s\S]*?\}\s*return \{ success: true, submitted, digits: otp\.length, fieldType: found\.type \};/;
+    const to = `// No automatic submit. The user confirms the code themselves.
+  return { success: true, submitted: false, digits: otp.length, fieldType: found.type };`;
+    if (from.test(src)) {
+      src = src.replace(from, to);
+      done.push('content.js: no automatic submit in fillOtpCode (regex)');
+    } else {
+      problems.push('content.js: no automatic submit in fillOtpCode (regex hittades inte)');
+    }
+  }
 
   // The funnel walker clicked "Sign up" and "Create account", which is driving
   // account creation rather than filling a form. userClick() stays, because the

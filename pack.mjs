@@ -8,8 +8,8 @@
  * upload is the most common reason a review comes back with a question.
  *
  * Run:  node pack.mjs
- * Out:  dist/autoaccountmaker-form-filler-chrome-1.12.0.zip
- *       dist/autoaccountmaker-form-filler-firefox-1.12.0.zip
+ * Out:  dist/autoaccountmaker-form-filler-chrome-1.13.2.zip
+ *       dist/autoaccountmaker-form-filler-firefox-1.13.2.zip
  */
 import fs from 'node:fs';
 import path from 'node:path';
