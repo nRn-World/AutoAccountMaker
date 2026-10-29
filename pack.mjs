@@ -264,6 +264,21 @@ const chrome = zip(`autoaccountmaker-form-filler-chrome-${VERSION}.zip`, (m) => 
 // Firefox uses background scripts in MV3 for robust compatibility and linter compliance
 const firefox = zip(`autoaccountmaker-form-filler-firefox-${VERSION}.zip`, (m) => {
   m.background = { scripts: ['cooldown.js', 'background.js'] };
+  
+  // Firefox requires explicit data collection declaration
+  m.data_collection_permission = 'no';
+  
+  // Firefox MV3 uses options_ui instead of options_page
+  if (m.options_page) {
+    m.options_ui = { page: m.options_page };
+    delete m.options_page;
+  }
+  
+  // Raise minimum version to 128 to avoid "strict_min_version" warnings
+  // for features that were added after 109
+  if (m.browser_specific_settings?.gecko) {
+    m.browser_specific_settings.gecko.strict_min_version = '128.0';
+  }
 });
 
 console.log(`Paketerade ${included.length} filer från store-build/`);
