@@ -276,7 +276,7 @@ const firefox = zip(`autoaccountmaker-form-filler-firefox-${VERSION}.zip`, (m) =
   if (!m.browser_specific_settings) m.browser_specific_settings = {};
   if (!m.browser_specific_settings.gecko) m.browser_specific_settings.gecko = {};
   
-  m.browser_specific_settings.gecko.id = m.browser_specific_settings.gecko.id || 'autoaccountmaker-form-filler@nrnworld.com';
+  m.browser_specific_settings.gecko.id = 'autoaccountmaker@nrnworld.com';
   // strict_min_version must be 140 for desktop Firefox to support data_collection_permissions
   m.browser_specific_settings.gecko.strict_min_version = '140.0';
   // data_collection_permissions.required must be an array containing "none" or data category strings
