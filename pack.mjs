@@ -15,10 +15,123 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(ROOT, 'store-build');
 const DIST = path.join(ROOT, 'dist');
+
+// ---------------------------------------------------------------------------
+// Pure-Node ZIP builder with forward-slash entry names.
+//
+// Compress-Archive on Windows stores paths with backslash separators, which
+// makes the Firefox Add-on linter fail with "Invalid file name in archive:
+// icons\icon128.png". This function builds the ZIP entirely in Node so there
+// are no external tools and no encoding issues with non-ASCII folder names
+// (like "Chrome Tillägg").
+// ---------------------------------------------------------------------------
+function buildZipNode(srcDir, destFile) {
+  const parts = []; // { header: Buffer, data: Buffer, offset: number, name: string, crc: number, size: number, compressed: number }
+  let offset = 0;
+
+  function walkDir(dir, base = '') {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      const rel = base ? `${base}/${entry.name}` : entry.name; // always forward slash
+      if (entry.isDirectory()) { walkDir(abs, rel); continue; }
+
+      const raw = fs.readFileSync(abs);
+      const compressed = zlib.deflateRawSync(raw, { level: 9 });
+
+      // Use deflate only if it actually shrinks the data.
+      const useDeflate = compressed.length < raw.length;
+      const data = useDeflate ? compressed : raw;
+      const method = useDeflate ? 8 : 0;
+
+      const crc = crc32(raw);
+      const nameBytes = Buffer.from(rel, 'utf8');
+      const now = new Date();
+      const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+      const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+
+      // Local file header
+      const local = Buffer.alloc(30 + nameBytes.length);
+      local.writeUInt32LE(0x04034b50, 0);   // signature
+      local.writeUInt16LE(20, 4);            // version needed
+      local.writeUInt16LE(0x0800, 6);        // flags: UTF-8
+      local.writeUInt16LE(method, 8);
+      local.writeUInt16LE(dosTime, 10);
+      local.writeUInt16LE(dosDate, 12);
+      local.writeUInt32LE(crc >>> 0, 14);
+      local.writeUInt32LE(data.length, 18);
+      local.writeUInt32LE(raw.length, 22);
+      local.writeUInt16LE(nameBytes.length, 26);
+      local.writeUInt16LE(0, 28);            // extra length
+      nameBytes.copy(local, 30);
+
+      parts.push({ local, data, offset, name: nameBytes, crc, size: raw.length, compressed: data.length, method, dosTime, dosDate });
+      offset += local.length + data.length;
+    }
+  }
+
+  walkDir(srcDir);
+
+  // Central directory
+  const cdParts = [];
+  for (const p of parts) {
+    const cd = Buffer.alloc(46 + p.name.length);
+    cd.writeUInt32LE(0x02014b50, 0);    // signature
+    cd.writeUInt16LE(20, 4);             // version made by
+    cd.writeUInt16LE(20, 6);             // version needed
+    cd.writeUInt16LE(0x0800, 8);         // flags: UTF-8
+    cd.writeUInt16LE(p.method, 10);
+    cd.writeUInt16LE(p.dosTime, 12);
+    cd.writeUInt16LE(p.dosDate, 14);
+    cd.writeUInt32LE(p.crc >>> 0, 16);
+    cd.writeUInt32LE(p.compressed, 20);
+    cd.writeUInt32LE(p.size, 24);
+    cd.writeUInt16LE(p.name.length, 28);
+    cd.writeUInt16LE(0, 30);             // extra
+    cd.writeUInt16LE(0, 32);             // comment
+    cd.writeUInt16LE(0, 34);             // disk start
+    cd.writeUInt16LE(0, 36);             // int attr
+    cd.writeUInt32LE(0, 38);             // ext attr
+    cd.writeUInt32LE(p.offset, 42);
+    p.name.copy(cd, 46);
+    cdParts.push(cd);
+  }
+
+  const cdBuf = Buffer.concat(cdParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(parts.length, 8);
+  eocd.writeUInt16LE(parts.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  eocd.writeUInt16LE(0, 20);
+
+  const localBuffers = parts.flatMap(p => [p.local, p.data]);
+  fs.writeFileSync(destFile, Buffer.concat([...localBuffers, cdBuf, eocd]));
+}
+
+// CRC-32 table
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c;
+  }
+  return t;
+})();
+
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
 
 if (!fs.existsSync(path.join(SRC, 'manifest.json'))) {
   console.error('store-build/manifest.json saknas. Kör: node build-store.mjs');
@@ -123,13 +236,16 @@ function zip(outName, manifestModifier = null) {
       fs.writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n', 'utf8');
     }
 
-    // Run from inside store-build so manifest.json lands at the zip root.
     if (process.platform === 'win32') {
-      execFileSync('powershell', [
-        '-NoProfile',
-        '-Command',
-        `Compress-Archive -Path * -DestinationPath '${out.replace(/'/g, "''")}' -Force`,
-      ], { cwd: SRC, stdio: 'inherit' });
+      // Compress-Archive on Windows stores entries with backslash separators,
+      // which makes the Firefox Add-on linter reject the archive with
+      // "Invalid file name in archive: icons\icon128.png".
+      //
+      // We build the ZIP entirely in Node.js using the built-in
+      // zlib (deflate) + manual ZIP format construction, so there are no
+      // external dependencies and no PowerShell encoding issues with non-ASCII
+      // paths (like "Chrome Tillägg").
+      buildZipNode(SRC, out);
     } else {
       execFileSync('zip', ['-r', '-q', out, '.'], { cwd: SRC, stdio: 'inherit' });
     }
