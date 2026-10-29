@@ -278,10 +278,10 @@ const firefox = zip(`autoaccountmaker-form-filler-firefox-${VERSION}.zip`, (m) =
   
   m.browser_specific_settings.gecko.id = m.browser_specific_settings.gecko.id || 'autoaccountmaker-form-filler@nrnworld.com';
   m.browser_specific_settings.gecko.strict_min_version = '128.0';
-  // data_collection_permissions must be an object, not a string
-  // Reference: https://mzl.la/3OI28tr (MDN docs for more information)
+  // data_collection_permissions requires "required" property (not "collect")
+  // Reference: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings
   m.browser_specific_settings.gecko.data_collection_permissions = {
-    collect: false
+    required: false
   };
 });
 
