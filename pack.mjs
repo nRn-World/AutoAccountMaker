@@ -277,12 +277,19 @@ const firefox = zip(`autoaccountmaker-form-filler-firefox-${VERSION}.zip`, (m) =
   if (!m.browser_specific_settings.gecko) m.browser_specific_settings.gecko = {};
   
   m.browser_specific_settings.gecko.id = m.browser_specific_settings.gecko.id || 'autoaccountmaker-form-filler@nrnworld.com';
-  m.browser_specific_settings.gecko.strict_min_version = '128.0';
-  // data_collection_permissions requires "required" property (not "collect")
+  // strict_min_version must be 140 for desktop Firefox to support data_collection_permissions
+  m.browser_specific_settings.gecko.strict_min_version = '140.0';
+  // data_collection_permissions.required must be an array containing "none" or data category strings
+  // This extension collects no data, so required: ["none"]
   // Reference: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings
   m.browser_specific_settings.gecko.data_collection_permissions = {
-    required: false
+    required: ['none']
   };
+  // gecko_android.strict_min_version must be 142 to support data_collection_permissions on Android
+  if (!m.browser_specific_settings.gecko_android) {
+    m.browser_specific_settings.gecko_android = {};
+  }
+  m.browser_specific_settings.gecko_android.strict_min_version = '142.0';
 });
 
 console.log(`Paketerade ${included.length} filer från store-build/`);
