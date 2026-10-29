@@ -278,7 +278,11 @@ const firefox = zip(`autoaccountmaker-form-filler-firefox-${VERSION}.zip`, (m) =
   
   m.browser_specific_settings.gecko.id = m.browser_specific_settings.gecko.id || 'autoaccountmaker-form-filler@nrnworld.com';
   m.browser_specific_settings.gecko.strict_min_version = '128.0';
-  m.browser_specific_settings.gecko.data_collection_permissions = 'no';
+  // data_collection_permissions must be an object, not a string
+  // Reference: https://mzl.la/3OI28tr (MDN docs for more information)
+  m.browser_specific_settings.gecko.data_collection_permissions = {
+    collect: false
+  };
 });
 
 console.log(`Paketerade ${included.length} filer från store-build/`);
