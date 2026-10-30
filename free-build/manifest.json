@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AutoAccountMaker",
-  "version": "1.13.3",
+  "version": "1.13.4",
   "description": "Creates accounts automatically with a temporary e mail address, verifies them and logs in for you.",
   "permissions": [
     "activeTab",
@@ -9,7 +9,6 @@
     "storage",
     "unlimitedStorage",
     "tabs",
-    "windows",
     "sidePanel"
   ],
   "host_permissions": [

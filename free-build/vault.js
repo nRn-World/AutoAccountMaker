@@ -298,28 +298,46 @@ document.getElementById('btnExportPdf')?.addEventListener('click', async () => {
   }
 
   const cols = exportColumns();
-  const esc = (v) => String(v == null ? '' : v)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const head = cols.map((c) => `<th>${esc(c.label)}</th>`).join('');
-  const body = accounts.map((acc) => {
+  const title = document.createElement('h1');
+  title.textContent = 'AutoAccountMaker';
+
+  const sub = document.createElement('p');
+  sub.className = 'p-sub';
+  sub.textContent =
+    t('export.pdfSubtitle', accounts.length) + ' — ' + new Date().toLocaleString(I18N.language);
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  for (const c of cols) {
+    const th = document.createElement('th');
+    th.textContent = c.label;
+    headRow.append(th);
+  }
+  thead.append(headRow);
+
+  const tbody = document.createElement('tbody');
+  for (const acc of accounts) {
     const row = accountRows(acc);
-    return '<tr>' + cols.map((c) => {
-      const cls = ['password', 'email', 'username'].includes(c.key) ? ' class="mono"' : '';
-      return `<td${cls}>${esc(row[c.key])}</td>`;
-    }).join('') + '</tr>';
-  }).join('');
+    const tr = document.createElement('tr');
+    for (const c of cols) {
+      const td = document.createElement('td');
+      if (['password', 'email', 'username'].includes(c.key)) td.className = 'mono';
+      td.textContent = row[c.key] == null ? '' : String(row[c.key]);
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(thead, tbody);
 
-  area.innerHTML = `
-    <h1>AutoAccountMaker</h1>
-    <p class="p-sub">${esc(t('export.pdfSubtitle', accounts.length))} — ${esc(new Date().toLocaleString(I18N.language))}</p>
-    <table>
-      <thead><tr>${head}</tr></thead>
-      <tbody>${body}</tbody>
-    </table>
-    <p class="p-note">${esc(t('export.warning'))}</p>
-  `;
+  const note = document.createElement('p');
+  note.className = 'p-note';
+  note.textContent = t('export.warning');
 
+  // Nodes, not markup: every value is inserted as text, so nothing here can be
+  // parsed as HTML (addons.mozilla.org warns about innerHTML assignments).
+  area.replaceChildren(title, sub, table, note);
   showVaultMessage(t('export.pdfHint'), 'ok');
   // Let the layout settle before the dialog opens.
   setTimeout(() => window.print(), 150);
