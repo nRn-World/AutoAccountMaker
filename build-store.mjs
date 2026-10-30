@@ -127,6 +127,16 @@ for (const size of [16, 48, 128]) {
   const p = path.join(OUT, 'icons', `icon${size}.png`);
   if (!fs.existsSync(p)) problems.push(`icons/icon${size}.png saknas i store-build/`);
 }
+
+// The Ko-fi image belongs to the private build's tip jar. pack.mjs refuses any
+// file it does not recognise, so it is removed here rather than shipped to a store.
+{
+  const p = path.join(OUT, 'icons', 'kofi-coffee.png');
+  if (fs.existsSync(p)) {
+    fs.rmSync(p, { force: true });
+    done.push('removed icons/kofi-coffee.png');
+  }
+}
 for (const dir of ['csv-downloads', 'Screenshots']) {
   const p = path.join(OUT, dir);
   if (fs.existsSync(p)) {
