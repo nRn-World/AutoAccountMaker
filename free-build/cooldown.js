@@ -32,18 +32,12 @@ async function readActiveTimestamps() {
     const local = await chrome.storage.local.get([RUN_TIMESTAMPS_KEY]);
     localStamps = local[RUN_TIMESTAMPS_KEY] || [];
   } catch (e) {}
-
-  // chrome.storage.sync can be very slow or hang in some environments.
-  // We wrap it in a short timeout to prevent the whole background script from hanging.
   try {
     if (chrome.storage.sync) {
-      const syncPromise = chrome.storage.sync.get([RUN_TIMESTAMPS_KEY]);
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
-      const sync = await Promise.race([syncPromise, timeoutPromise]);
+      const sync = await chrome.storage.sync.get([RUN_TIMESTAMPS_KEY]);
       syncStamps = sync[RUN_TIMESTAMPS_KEY] || [];
     }
   } catch (e) {}
-
   const timestamps = [...new Set([...localStamps, ...syncStamps].filter((ts) => ts > cutoff))].sort();
   return { now, timestamps };
 }
@@ -52,9 +46,7 @@ async function writeActiveTimestamps(timestamps) {
   await chrome.storage.local.set({ [RUN_TIMESTAMPS_KEY]: timestamps });
   try {
     if (chrome.storage.sync) {
-      const syncPromise = chrome.storage.sync.set({ [RUN_TIMESTAMPS_KEY]: timestamps });
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
-      await Promise.race([syncPromise, timeoutPromise]);
+      await chrome.storage.sync.set({ [RUN_TIMESTAMPS_KEY]: timestamps });
     }
   } catch (e) {}
 }

@@ -18,7 +18,12 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const SRC = path.join(ROOT, 'free-build');
+// The private build in extension/ is the one users install: it carries license.js,
+// the Pro box and the account creation code. A clone without that folder (it is not
+// version controlled) falls back to the free tier build in free-build/.
+const SRC = fs.existsSync(path.join(ROOT, 'extension', 'license.js'))
+  ? path.join(ROOT, 'extension')
+  : path.join(ROOT, 'free-build');
 const OUT = path.join(ROOT, 'release');
 
 // Everything that goes into a package. Anything not listed stays out, so a screenshot,
@@ -216,8 +221,15 @@ function forTarget(target, rel) {
   const data = fs.readFileSync(path.join(SRC, rel));
   if (target !== 'firefox' || rel !== 'background.js') return data;
   const code = data.toString('utf8');
-  const cut = code.replace(/\/\/ BEGIN-CHROME-ONLY[\s\S]*?\/\/ END-CHROME-ONLY\r?\n/, '');
-  if (cut === code || /sidePanel/.test(cut.replace(/\/\/.*$/gm, ''))) fail('background.js: the Chrome-only block was not cut out');
+  const start = code.indexOf('// BEGIN-CHROME-ONLY');
+  const end = code.indexOf('// END-CHROME-ONLY');
+  // chrome.sidePanel exists only in Chromium, so Firefox gets the block without it.
+  const cut = start >= 0 && end > start
+    ? code.slice(0, start) + code.slice(code.indexOf('\n', end) + 1)
+    : code;
+  if (cut.includes('chrome.sidePanel')) {
+    fail('background.js: chrome.sidePanel is not guarded for Firefox');
+  }
   return Buffer.from(cut, 'utf8');
 }
 

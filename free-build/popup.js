@@ -4,166 +4,22 @@ const btnRegister = document.getElementById('btnRegister');
 const btnLogin = document.getElementById('btnLogin');
 const btnVerify = document.getElementById('btnVerify');
 const btnTest = document.getElementById('btnTest');
-const btnReset = document.getElementById('btnReset');
-
-// Extension pages are chrome-extension:// in Chrome and moz-extension:// in Firefox.
-const EXT_PAGE = /^(chrome|moz)-extension:\/\//;
-const sponsorCard = document.getElementById('sponsorCard');
-const sponsorClose = document.getElementById('sponsorClose');
-
-// The sponsored link is an Adsterra Smartlink. It is shown to free users only, it is
-// labelled as sponsored, the user can hide it, and it only opens when the user clicks it.
-const SPONSOR_URL = 'https://asiafilm.org/4/b2b8c8a70e1ef0c78b4ba6a3fb971c30';
-let sponsorHidden = false;
-
-function renderSponsor() {
-  if (!sponsorCard) return;
-  sponsorCard.href = SPONSOR_URL;
-  sponsorCard.hidden = isPro || sponsorHidden;
-}
-
-sponsorClose?.addEventListener('click', (e) => {
-  // The close button sits inside the link, so keep the click from opening it.
-  e.preventDefault();
-  e.stopPropagation();
-  sponsorHidden = true;
-  renderSponsor();
-});
-
-// Bumped by "Start over": a flow that was running at that moment must not touch the screen afterwards.
-let resetCount = 0;
 const logBox = document.getElementById('logBox');
 const credsBox = document.getElementById('credsBox');
 const dispEmail = document.getElementById('dispEmail');
 const dispPassword = document.getElementById('dispPassword');
 const stepsBox = document.getElementById('steps');
 const btnSettings = document.getElementById('btnSettings');
-const licenseStatus = document.getElementById('licenseStatus');
-const licenseStatusText = document.getElementById('licenseStatusText');
-const licenseCooldown = document.getElementById('licenseCooldown');
-const licenseCooldownText = document.getElementById('licenseCooldownText');
-const licensePro = document.getElementById('licensePro');
-const licenseResult = document.getElementById('licenseResult');
-const btnBuyPro = document.getElementById('btnBuyPro');
-const inputLicenseKey = document.getElementById('inputLicenseKey');
-const btnActivateLicense = document.getElementById('btnActivateLicense');
-const btnDeactivateLicense = document.getElementById('btnDeactivateLicense');
 
-let currentTab = null;
-let pageReady = false;
-let isPro = false;
-let cooldownUntil = 0;
-let licenseTimer = null;
-
-/**
- * Mirrors the cooldown in the interface. A Pro user never sees a blocked state
- * at all, only a small "Pro active" line, while the free view gets a clear
- * warning when the lock is shut, so it is obvious why the button is dead.
- */
-function renderLicenseState(remainingMs = Math.max(0, cooldownUntil - Date.now())) {
-  renderSponsor();
-  const licenseEntry = document.getElementById('licenseEntry');
-  const btnBuy = document.getElementById('btnBuyPro');
-
-  if (isPro) {
-    // The Pro row below already says "Pro active", so the status line above it
-    // would repeat the same words.
-    licenseStatus.className = 'license-status pro';
-    licenseStatus.style.display = 'none';
-    licenseCooldown.style.display = 'none';
-    licensePro.style.display = 'flex';
-    // Already Pro: "Already have a license key?" is meaningless here, and the
-    // buy button must not be shown to someone who already paid.
-    if (licenseEntry) licenseEntry.style.display = 'none';
-    if (btnBuy) btnBuy.style.display = 'none';
-    btnRegister.disabled = false;
-    return;
-  }
-
-  licensePro.style.display = 'none';
-  licenseStatus.style.display = '';
-  if (licenseEntry) licenseEntry.style.display = 'block';
-  if (btnBuy) btnBuy.style.display = 'block';
-
-  if (remainingMs > 0) {
-    cooldownUntil = Date.now() + remainingMs;
-    licenseStatus.className = 'license-status blocked';
-    licenseStatusText.textContent = t('popup.licenseFreeBlocked');
-    licenseCooldown.style.display = 'block';
-    licenseCooldownText.textContent = t('popup.licenseCooldownText', formatRemaining(remainingMs));
-    btnRegister.disabled = true;
-  } else {
-    cooldownUntil = 0;
-    licenseStatus.className = 'license-status ready';
-    licenseStatusText.textContent = t('popup.licenseFreeReady');
-    licenseCooldown.style.display = 'none';
-    // The button is not locked here: the click goes on to a real check in the
-    // background, so a stale button cannot lock out an entitled user.
-    if (!pageReady || currentTab?.id) btnRegister.disabled = false;
-  }
-}
-
-async function refreshLicenseState() {
-  try {
-    const res = await sendMsg({ action: 'getLicenseStatus' });
-    if (!res?.success) return;
-    isPro = res.isPro === true;
-    if (isPro) {
-      renderLicenseState(0);
-      return;
-    }
-    renderLicenseState(res.canStart?.remainingMs || 0);
-  } catch (e) {
-    // Better to show nothing than to lock the user out on a broken check.
-    console.warn('[AAM License] refresh failed:', e);
-  }
-}
-
-function startLicenseCountdown() {
-  if (licenseTimer) clearInterval(licenseTimer);
-  licenseTimer = setInterval(() => {
-    if (isPro) return;
-    const remaining = Math.max(0, cooldownUntil - Date.now());
-    if (remaining <= 0) {
-      clearInterval(licenseTimer);
-      licenseTimer = null;
-      renderLicenseState(0);
-      return;
-    }
-    renderLicenseState(remaining);
-  }, 30000);
-}
-
-btnActivateLicense?.addEventListener('click', async () => {
-  const key = inputLicenseKey.value;
-  licenseResult.className = 'license-hint';
-  licenseResult.textContent = t('popup.licenseChecking');
-  const res = await sendMsg({ action: 'activateLicense', key });
-  if (res?.success) {
-    isPro = true;
-    licenseResult.className = 'license-hint success';
-    licenseResult.textContent = t('popup.licenseActivated');
-    inputLicenseKey.value = '';
-    renderLicenseState(0);
-  } else {
-    licenseResult.className = 'license-hint error';
-    licenseResult.textContent = res?.error || t('popup.licenseInvalid');
-  }
-});
-
-btnDeactivateLicense?.addEventListener('click', async () => {
-  await sendMsg({ action: 'deactivateLicense' });
-  isPro = false;
-  await refreshLicenseState();
-});
-
-if (btnBuyPro && typeof KOFI_URL === 'string' && KOFI_URL) {
-  btnBuyPro.href = KOFI_URL;
-}
+const workingBox = document.getElementById('workingBox');
+const workingSub = document.getElementById('workingSub');
+const workingElapsed = document.getElementById('workingElapsed');
+const workingClose = document.getElementById('workingClose');
+let workingTimer = null;
+let workingStart = 0;
 
 // The steps of the registration flow, in order.
-// The account is saved when the form has been filled, before the user submits it.
-const STEP_KEYS = ['stepEmail', 'stepFill', 'stepSave', 'stepSubmit', 'stepMail', 'stepVerify', 'stepDone'];
+const STEP_KEYS = ['stepEmail', 'stepFill', 'stepSubmit', 'stepSave', 'stepMail', 'stepVerify', 'stepDone'];
 
 /** Shows the step view and sets every step to a state. */
 function showSteps() {
@@ -274,7 +130,7 @@ function sendToTab(tabId, msg) {
 
 function isUsableTab(url) {
   if (!url) return false;
-  return url.startsWith('http://') || url.startsWith('https://') || EXT_PAGE.test(url || '');
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('chrome-extension://');
 }
 
 function getSiteKey(url) {
@@ -317,26 +173,21 @@ async function getActiveTab() {
   }
 }
 
-/**
- * Puts the content script into the page when it is not there. A page that was
- * open before the extension was installed, updated or reloaded has no content
- * script, and chrome.tabs.sendMessage then fails with "Receiving end does not exist".
- */
-async function injectContentScript(tabId) {
-  try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function ensureContentScript(tabId) {
   const ping = await sendToTab(tabId, { action: 'ping' });
   if (ping?.pong) return true;
-  if (!(await injectContentScript(tabId))) return false;
-  const again = await sendToTab(tabId, { action: 'ping' });
-  return !!again?.pong;
+
+  // The page can be open from before the extension was installed or updated.
+  // Then the old content script is orphaned and every message fails, which
+  // used to be reported as "the page stopped responding". Inject a fresh copy
+  // and try again before giving up.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await sendMsg({ action: 'injectContentScript', tabId }).catch(() => null);
+    await new Promise((r) => setTimeout(r, 400 + attempt * 600));
+    const retry = await sendToTab(tabId, { action: 'ping' });
+    if (retry?.pong) return true;
+  }
+  return false;
 }
 
 /**
@@ -347,7 +198,6 @@ async function ensureContentScript(tabId) {
 async function waitForContentScript(tabId, timeoutMs = 10000, requireForm = false) {
   const deadline = Date.now() + timeoutMs;
   let delay = 250;
-  await ensureContentScript(tabId);
   while (Date.now() < deadline) {
     const ping = await sendToTab(tabId, { action: 'ping' });
     if (ping?.pong && (!requireForm || ping.hasForm)) return true;
@@ -389,40 +239,41 @@ async function sendMsgWaitingForSlot(msg, waitMs = 120000) {
   }
 }
 
-/** The registration failed before anything was done on the page: give the free run back. */
-async function refundRunSlot() {
-  await sendMsg({ action: 'refundRunSlot' });
-  await refreshLicenseState();
-}
-
 async function runVerification(account, tabId) {
-  const myRun = resetCount;
   btnVerify.disabled = true;
   btnRegister.disabled = true;
   btnLogin.disabled = true;
   showSteps();
-  // E-mail, fill, save and submit are done, now we wait for the e-mail (index 4).
-  renderSteps(4);
+  // Steps 1 to 4 (account, form, submit, save) are done, we are on step 5.
+  renderSteps(5);
   statusText.textContent = t('popup.statusWaiting');
   log(t('popup.statusWaiting'), 'info');
 
+  setWorking(true, t('popup.statusWaiting'));
+
   const baseUrl = currentTab?.url || undefined;
   const result = await sendMsgWaitingForSlot({ action: 'autoVerify', account, tabId, baseUrl });
-  if (myRun !== resetCount) return result;
 
   if (result?.success) {
+    setWorking(false);
     completeSteps();
-    if (result.method === 'otp') {
+    if (result.alreadyVerified || result.method === 'session') {
+      log(t('popup.logAlreadyVerified'), 'success');
+    } else if (result.method === 'otp') {
       log(t('popup.logVerifyDoneCode', result.code), 'success');
     } else {
       log(t('popup.logVerifyDoneLink'), 'success');
     }
     statusText.textContent = t('popup.statusVerified');
   } else {
-    // No e-mail arrived: the failed step is "waiting for the e-mail", not "entering the code".
-    const mailWaitFailed = ['timeoutMailtm', 'timeoutTempmail', 'noMailFound', 'noMailCredentials'].includes(result?.errorCode);
-    finishSteps(mailWaitFailed ? 4 : 5, false);
+    finishSteps(5, false);
+    setWorking(false);
     log(translateError(result, 'popup.logVerifyFailed'), 'error');
+    // mail.tm is refused by some senders (Lovable/Supabase), so clicking the
+    // same dead mailbox again can never succeed. Say what actually helps.
+    if (result?.errorCode === 'timeoutMailtm') {
+      log(t('popup.mailTimeoutHint'), 'info');
+    }
 
     if (result?.link) {
       showLink(result.link);
@@ -461,36 +312,13 @@ async function findAccountForTab(tab) {
   return accounts[0];
 }
 
-// Sites where automated registration is blocked for legal or security reasons.
-const BLOCKED_DOMAINS = [
-  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'linkedin.com', 'tiktok.com', 'snapchat.com',
-  'google.com', 'microsoft.com', 'apple.com', 'amazon.com', 'ebay.com', 'craigslist.org',
-  'paypal.com', 'stripe.com', 'revolut.com', 'wise.com', 'binance.com', 'coinbase.com',
-  'bankid.com', 'skatteverket.se', 'forsakringskassan.se', 'polisen.se', 'regeringen.se',
-  'swedbank.se', 'nordea.se', 'seb.se', 'handelsbanken.se', 'avanza.se', 'klarna.com', 'qliro.com',
-  'netflix.com', 'disneyplus.com', 'hbo.com', 'spotify.com', 'youtube.com',
-  'gov', 'mil', 'edu' // Generic TLDs often sensitive
-];
-
-function isBlockedSite(url) {
-  try {
-    const hostname = new URL(url).hostname.replace(/^www\./, '');
-    return BLOCKED_DOMAINS.some(domain => hostname === domain || hostname.endsWith('.' + domain));
-  } catch {
-    return false;
-  }
-}
-
 async function init() {
   // Clear the badge when the popup is opened
   chrome.action.setBadgeText({ text: '' });
 
   await I18N.initI18n();
-  statusText.classList.remove('err');
 
   // License and cooldown must be visible right away, also on chrome:// pages.
-  await refreshLicenseState();
-  startLicenseCountdown();
 
   // In the side panel context, currentWindow: true refers to the panel's own
   // window — not the browser window the user is looking at. So we query all
@@ -508,18 +336,8 @@ async function init() {
     return;
   }
 
-  if (isBlockedSite(tab.url)) {
-    siteBadge.textContent = new URL(tab.url).hostname;
-    statusText.textContent = t('popup.statusBlockedSite');
-    statusText.classList.add('err');
-    btnRegister.disabled = true;
-    btnLogin.disabled = true; // Block login too for high-risk sites
-    pageReady = false;
-    return;
-  }
-
   pageReady = isUsableTab(tab.url);
-  const host = EXT_PAGE.test(tab.url || '')
+  const host = tab.url.startsWith('chrome-extension://')
     ? t('popup.statusTestsite')
     : new URL(tab.url).hostname;
   siteBadge.textContent = host;
@@ -532,11 +350,11 @@ async function init() {
     return;
   }
 
-  if (!EXT_PAGE.test(tab.url || '')) {
+  if (!tab.url.startsWith('chrome-extension://')) {
     const accRes = await sendMsg({ action: 'getAccountsForSite', hostname: new URL(tab.url).hostname });
     if (accRes?.accounts?.length > 0) {
       const unverified = accRes.accounts.find((a) => !a.verified);
-      if (unverified?.mailToken || unverified?.emailHash) {
+      if (unverified?.mailToken || unverified?.emailHash || unverified?.guerrillaSid) {
         btnVerify.style.display = 'block';
         statusText.textContent = t('popup.statusUnverified');
       } else {
@@ -547,7 +365,6 @@ async function init() {
 }
 
 btnRegister.addEventListener('click', async () => {
-  const myRun = resetCount;
   // Always re-detect the active tab at click time — in the side panel the
   // cached currentTab can be stale if the user navigated or reloaded.
   currentTab = await getActiveTab();
@@ -565,14 +382,21 @@ btnRegister.addEventListener('click', async () => {
   credsBox.classList.remove('visible');
   showSteps();
   renderSteps(0);
+  setWorking(true, t('popup.stepEmail'));
 
-  const profileRes = await sendMsg({ action: 'getNewProfile' });
+  const profileRes = await sendMsg({
+    action: 'getNewProfile',
+    // The hostname decides the provider: sites that bounced mail.tm before
+    // are registered with Guerrilla Mail straight away.
+    hostname: currentTab?.url && !currentTab.url.startsWith('chrome-extension://')
+      ? new URL(currentTab.url).hostname
+      : '',
+  });
   if (!profileRes?.success) {
     // The cooldown is rejected here, so mirror it in the interface with a
-    // countdown and the buy button, not a generic "could not create a profile".
+// The cooldown is rejected here, so show the time left and lock the button.
     if (profileRes?.reason === 'cooldown') {
-      isPro = false;
-      renderLicenseState(profileRes.remainingMs || 0);
+      cooldownUntil = Date.now() + (profileRes.remainingMs || 0);
       log(t('popup.licenseCooldownText', profileRes.remainingLabel || ''), 'error');
       statusText.textContent = t('popup.licenseFreeBlocked');
       stepsBox.classList.remove('visible');
@@ -580,10 +404,10 @@ btnRegister.addEventListener('click', async () => {
       btnLogin.disabled = false;
       return;
     }
+    setWorking(false);
     log(translateError(profileRes, 'popup.logProfileFailed'), 'error');
     statusText.textContent = translateError(profileRes, 'popup.logProfileFailed');
     finishSteps(0, false);
-    await refundRunSlot();
     btnRegister.disabled = false;
     btnLogin.disabled = false;
     return;
@@ -598,7 +422,7 @@ btnRegister.addEventListener('click', async () => {
   const autoSubmit = settingsRes?.settings?.autoSubmitForm !== false;
 
   // The test page has several forms, so make sure we are on the registration step.
-  if (EXT_PAGE.test(currentTab.url || '')) {
+  if (currentTab.url.startsWith('chrome-extension://')) {
     await sendToTab(currentTab.id, { action: 'showRegisterStep' });
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -606,7 +430,6 @@ btnRegister.addEventListener('click', async () => {
   // Close cookie banners, tick Terms and click our way to the form.
   // Many sites reload the page when consent is stored, so wait for it
   // svarar igen innan vi fyller i.
-  await ensureContentScript(currentTab.id);
   const prep = await sendToTab(currentTab.id, { action: 'prepareForRegistration' });
   if (prep?.consentDismissed) log(t('popup.logConsent'), 'info');
   if (prep?.termsChecked?.length) log(t('popup.logTerms', prep.termsChecked.length), 'info');
@@ -626,19 +449,34 @@ btnRegister.addEventListener('click', async () => {
   //  - content scriptet svarar inte alls → sidan laddade om
   //  - the page answers but has no form: wrong page (a pure
   //    inloggningssida). Att kalla det "slutade svara" var vilseledande.
-  const ready = await waitForContentScript(currentTab.id, 10000, true);
+  let ready = await waitForContentScript(currentTab.id, 10000, true);
   if (!ready) {
-    const stillAlive = await ensureContentScript(currentTab.id);
-    const msg = stillAlive ? t('popup.logNoForm') : t('popup.logNoResponse');
+    // Last resort: a tab that predates the extension update cannot always be
+    // reached. Reload it once, then wait for the form again.
+    const alive = await ensureContentScript(currentTab.id);
+    if (alive) {
+      ready = await waitForContentScript(currentTab.id, 5000, true);
+    } else {
+      log(t('popup.logReloadingPage'), 'info');
+      try {
+        await chrome.tabs.reload(currentTab.id);
+      } catch {}
+      await new Promise((r) => setTimeout(r, 3000));
+      ready = await waitForContentScript(currentTab.id, 15000, true);
+    }
+  }
+  if (!ready) {
+    setWorking(false);
+    const msg = t('popup.logNoResponse');
     log(msg, 'error');
     statusText.textContent = msg;
     finishSteps(1, false);
-    await refundRunSlot();
     btnRegister.disabled = false;
     btnLogin.disabled = false;
     return;
   }
 
+  setWorkingPhase(t('popup.logFilling'));
   statusText.textContent = t('popup.logFilling');
 
   // If the page navigates at exactly this moment the message is lost. Then we wait
@@ -659,20 +497,20 @@ btnRegister.addEventListener('click', async () => {
 
   // No filled form at all, so say it straight instead of claiming success.
   if (fillRes?.result?.noForm) {
+    setWorking(false);
     log(t('popup.logNoForm'), 'error');
     statusText.textContent = t('popup.statusNoForm');
     finishSteps(1, false);
-    await refundRunSlot();
     btnRegister.disabled = false;
     btnLogin.disabled = false;
     return;
   }
 
   if (!fillRes?.success) {
+    setWorking(false);
     log(translateError(fillRes, 'popup.logFillFailed'), 'error');
     statusText.textContent = translateError(fillRes, 'popup.logFillFailed');
     finishSteps(1, false);
-    await refundRunSlot();
     btnRegister.disabled = false;
     btnLogin.disabled = false;
     return;
@@ -696,10 +534,10 @@ btnRegister.addEventListener('click', async () => {
     log(t('popup.logMissing', missing.join(', ')), 'error');
   }
 
-  // Filled in. Next the account is saved, then the page submits the form.
+  setWorkingPhase(t('popup.stepSave'));
   renderSteps(2);
 
-  const siteKey = EXT_PAGE.test(currentTab.url || '')
+  const siteKey = currentTab.url.startsWith('chrome-extension://')
     ? 'test-sida.local'
     : getSiteKey(currentTab.url);
 
@@ -714,55 +552,35 @@ btnRegister.addEventListener('click', async () => {
     mailPassword: profile.mailPassword,
     emailHash: profile.emailHash,
     rapidApiKey: profile.rapidApiKey,
+    guerrillaSid: profile.guerrillaSid,
     verified: false,
     createdAt: new Date().toISOString(),
   };
 
-  const saveRes = await sendMsg({ action: 'saveAccount', account });
+  await sendMsg({ action: 'saveAccount', account });
   await sendMsg({ action: 'startPendingVerification', tabId: currentTab.id, account });
-  log(t('popup.logSaved'), 'success');
-  if (saveRes?.removed > 0) {
-    log(t('vault.msgTrimmed', saveRes.accounts.length), 'info');
-  }
 
   dispEmail.textContent = profile.email;
   dispPassword.textContent = profile.password;
   credsBox.classList.add('visible');
+
+  // Do NOT submit. Prompt the user to review, accept terms and click Next / Create themselves!
+  statusText.textContent = t('popup.statusFormFilled');
+  log('✅ ' + t('popup.logFormFilled'), 'success');
+  log('👉 ' + t('popup.logReviewAndSubmit'), 'info');
+
+  btnRegister.disabled = false;
+  btnLogin.disabled = false;
   btnVerify.style.display = 'block';
+  btnVerify.disabled = false;
+  setWorking(false);
   btnVerify.textContent = t('popup.btnFetchOtp');
 
-  // Auto-submit is off, or the page has no submit button we could find: the user
-  // submits the form, then presses the verify button.
-  if (!fillRes.result?.submitted) {
-    renderSteps(3);
-    statusText.textContent = t('popup.statusFormFilled');
-    log(t('popup.logFormFilled'), 'success');
-    log(t('popup.logReviewAndSubmit'), 'info');
-    btnRegister.disabled = false;
-    btnLogin.disabled = false;
-    btnVerify.disabled = false;
-    return;
-  }
-
-  // The page clicks submit 800 ms after the fields are filled.
-  renderSteps(3);
-  await new Promise((r) => setTimeout(r, 1000));
-  renderSteps(4);
-
-  // The extension does the rest: wait for the verification e-mail (or read the
-  // code off the test page), enter it and submit. The user clicks nothing.
-  statusText.textContent = t('popup.statusRegistered');
-  log(t('popup.logVerifyStart'), 'info');
-
-  const verifyResult = await sendMsgWaitingForSlot({
-    action: 'autoVerify',
-    account,
-    tabId: currentTab.id,
-    baseUrl: currentTab.url,
-  });
-  if (myRun !== resetCount) return;
+  // Wait for user to click Next on the page and then click Verify code when ready
+  return;
 
   if (verifyResult?.success) {
+    setWorking(false);
     completeSteps();
     if (verifyResult.method === 'otp') {
       log(t('popup.logVerifyDoneCode', verifyResult.code), 'success');
@@ -771,8 +589,7 @@ btnRegister.addEventListener('click', async () => {
     }
     statusText.textContent = t('popup.statusDone');
   } else {
-    const mailWaitFailed = ['timeoutMailtm', 'timeoutTempmail', 'noMailFound', 'noMailCredentials'].includes(verifyResult?.errorCode);
-    finishSteps(mailWaitFailed ? 4 : 5, false);
+    finishSteps(5, false);
     log(translateError(verifyResult, 'popup.logVerifyFailed'), 'error');
 
     if (verifyResult?.link) {
@@ -806,7 +623,7 @@ btnVerify.addEventListener('click', async () => {
     return;
   }
 
-  if (!account.mailToken && !account.emailHash) {
+  if (!account.mailToken && !account.emailHash && !account.guerrillaSid) {
     log(t('popup.logNoMailCreds'), 'error');
     return;
   }
@@ -824,11 +641,8 @@ btnLogin.addEventListener('click', async () => {
   btnRegister.disabled = true;
   btnLogin.disabled = true;
   logBox.innerHTML = '';
-  // The progress list belongs to registration. Leaving it up during a login
-  // showed a half finished registration next to a successful login.
-  stepsBox.classList.remove('visible');
 
-  const hostname = EXT_PAGE.test(currentTab.url || '')
+  const hostname = currentTab.url.startsWith('chrome-extension://')
     ? 'test-sida.local'
     : new URL(currentTab.url).hostname;
 
@@ -848,7 +662,7 @@ btnLogin.addEventListener('click', async () => {
 
   // The test page has several forms. Ask it to switch to the login step so
   // we do not fill the registration form.
-  if (EXT_PAGE.test(currentTab.url || '')) {
+  if (currentTab.url.startsWith('chrome-extension://')) {
     await sendToTab(currentTab.id, { action: 'showLoginStep' });
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -863,12 +677,29 @@ btnLogin.addEventListener('click', async () => {
     autoSubmit: true,
   });
 
-  if (fillRes?.success && fillRes.result?.submitted) {
+  if (fillRes?.success) {
     log(t('popup.logLoginSent'), 'success');
-    statusText.textContent = t('popup.logLoginOk');
+
+    // Submitting the form is not the same as being logged in. Wait for the
+    // site, then check that it really left the login view before claiming
+    // success - otherwise a rejected login looked like a working one.
+    await new Promise((r) => setTimeout(r, 3200));
+    let url = '';
+    try {
+      url = (await chrome.tabs.get(currentTab.id))?.url || '';
+    } catch {}
+    const stillOnLogin = /(login|signin|sign-in|mode=signin|register|signup)/i.test(url);
+    const pageErr = await sendToTab(currentTab.id, { action: 'authError' });
     dispEmail.textContent = account.email;
     dispPassword.textContent = account.password;
     credsBox.classList.add('visible');
+    if (stillOnLogin || pageErr?.error) {
+      log(t('popup.logLoginNotAccepted'), 'error');
+      if (pageErr?.error) log(pageErr.error, 'error');
+      statusText.textContent = pageErr?.error || t('popup.logLoginNotAccepted');
+    } else {
+      statusText.textContent = t('popup.logLoginOk');
+    }
   } else {
     log(t('popup.logLoginFailed'), 'error');
     statusText.textContent = t('popup.logLoginFailed');
@@ -876,40 +707,6 @@ btnLogin.addEventListener('click', async () => {
 
   btnRegister.disabled = false;
   btnLogin.disabled = false;
-});
-
-/**
- * Start over on the same page: stop a running verification, clear everything the
- * panel shows and reload the page so the form is empty again. A free run that was
- * already used stays used.
- */
-btnReset?.addEventListener('click', async () => {
-  resetCount += 1;
-  btnReset.disabled = true;
-  await sendMsg({ action: 'cancelVerification' });
-
-  stepsBox.classList.remove('visible');
-  stepRows().forEach((_, i) => setStep(i, null));
-  logBox.innerHTML = '';
-  logBox.classList.remove('visible');
-  credsBox.classList.remove('visible');
-  dispEmail.textContent = '—';
-  dispPassword.textContent = '—';
-  btnVerify.style.display = 'none';
-  btnVerify.disabled = false;
-  btnVerify.textContent = t('popup.btnVerify');
-  btnRegister.disabled = false;
-  btnLogin.disabled = false;
-
-  currentTab = await getActiveTab();
-  pageReady = currentTab ? isUsableTab(currentTab.url) : false;
-  if (pageReady && currentTab?.id) {
-    try { await chrome.tabs.reload(currentTab.id); } catch { /* the page may be gone */ }
-  }
-
-  await refreshLicenseState();
-  statusText.textContent = t('popup.statusReset');
-  btnReset.disabled = false;
 });
 
 // The accounts live in Settings now, so the vault button is gone from the popup.
@@ -927,14 +724,15 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   if (!lang || lang === I18N.language) return;
 
   I18N.applyTranslations(document, lang);
-  renderLicenseState(isPro ? 0 : Math.max(0, cooldownUntil - Date.now()));
+  cooldownUntil = 0;
   if (currentTab) {
-    siteBadge.textContent = EXT_PAGE.test(currentTab.url || '')
+    siteBadge.textContent = currentTab.url?.startsWith('chrome-extension://')
       ? t('popup.statusTestsite')
       : safeHostname(currentTab.url);
   }
-  // The step texts carry data-i18n, so applyTranslations already redrew them.
-  // Do not touch the step states here: that used to reset progress to step 1.
+  // Step texts and status are not data-i18n, so they must be redrawn.
+  const current = Number(stepsBox.querySelector('.step-row.done')?.dataset.step || 0);
+  if (current) renderSteps(current);
   log(t('popup.statusIdle'), 'info');
 });
 

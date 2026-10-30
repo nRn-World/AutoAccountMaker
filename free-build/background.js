@@ -18,20 +18,16 @@ if (typeof importScripts === 'function') {
 
 // ── Side Panel ─────────────────────────────────────────────────────────────
 // Open popup.html in Chrome's built-in side panel (docked to the browser,
-// stays open while the user interacts with the page).
+// stays open while the user interacts with the page). Firefox has neither the
+// API nor the panel, so this block is cut from the Firefox package and is
+// guarded here as well.
 // BEGIN-CHROME-ONLY
-if (chrome.sidePanel?.setPanelBehavior) {
-  chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch(() => {});
+try {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+} catch (e) {
+  // This browser has no side panel.
 }
 // END-CHROME-ONLY
-if (typeof browser !== 'undefined' && browser.sidebarAction && browser.action?.onClicked) {
-  // Firefox has no sidePanel API. Its sidebar is opened and closed from the toolbar button.
-  browser.action.onClicked.addListener(() => {
-    browser.sidebarAction.toggle().catch(() => {});
-  });
-}
 // ───────────────────────────────────────────────────────────────────────────
 
 function updateBadge(text, color = '#10b981') {
@@ -62,28 +58,6 @@ function flashBadge(text, color, holdMs) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 25000 } = options;
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(resource, {
-      ...options,
-      signal: controller.signal
-    });
-    return response;
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-// "Start over" bumps this number. A polling loop that started under an older
-// number stops at its next round instead of finishing a flow the user abandoned.
-let verificationEpoch = 0;
-function cancelledResult() {
-  return { success: false, errorCode: 'cancelled', error: 'Cancelled.' };
-}
 
 /**
  * MV3 service workers are shut down after about 30 s of inactivity, and a
@@ -281,9 +255,10 @@ function md5(string) {
 // --- Huvudlogik ---
 const MAILTM_BASE = 'https://api.mail.tm';
 const TEMPMAIL_RAPIDAPI = 'https://privatix-temp-mail-v1.p.rapidapi.com';
+const GUERRILLA_API = 'https://api.guerrillamail.com/ajax.php';
 
 const DEFAULT_SETTINGS = {
-  emailProvider: 'mailtm',
+  emailProvider: 'guerrilla',
   rapidApiKey: '',
   autoSubmitForm: true,
   autoClickVerification: true,
@@ -350,12 +325,19 @@ async function getSettings() {
   if (!['en', 'sv', 'tr', 'ar', 'es', 'de', 'fr'].includes(settings.language)) {
     settings.language = DEFAULT_SETTINGS.language;
   }
+  // Guerrilla Mail is the default provider now. Installs that still carry the
+  // old default (mail.tm) are moved over once, so the first registration on a
+  // site does not end up in a mailbox that never receives the mail.
+  if (!settings.providerDefaultMigrated) {
+    settings.providerDefaultMigrated = true;
+    if (settings.emailProvider === 'mailtm') settings.emailProvider = 'guerrilla';
+    await chrome.storage.local.set({ settings });
+  }
   return settings;
 }
 
 async function createMailTmAccount(password) {
-  console.log('[AAM] Creating mail.tm account...');
-  const domainsRes = await fetchWithTimeout(`${MAILTM_BASE}/domains`);
+  const domainsRes = await fetch(`${MAILTM_BASE}/domains`);
   const domainsData = await domainsRes.json();
   const domain = domainsData['hydra:member']?.[0]?.domain;
   if (!domain) {
@@ -366,63 +348,21 @@ async function createMailTmAccount(password) {
 
   const username = generateUsername().toLowerCase();
   const email = `${username}@${domain}`;
-  console.log('[AAM] Chosen email:', email);
 
-  // mail.tm limits how fast accounts can be created from one address (HTTP 429).
-  // A short wait and a retry gets through a brief limit. A longer limit is reported as it is.
-  let createRes;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    console.log(`[AAM] Create account attempt ${attempt}...`);
-    createRes = await fetchWithTimeout(`${MAILTM_BASE}/accounts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: email, password }),
-    }).catch(() => null);
-    if (createRes?.ok) break;
-    if (createRes && createRes.status !== 429 && createRes.status < 500) break;
-    if (attempt < 3) {
-      const retryAfter = Number(createRes?.headers.get('retry-after')) || 0;
-      const wait = Math.min(Math.max(retryAfter * 1000, 1500 * attempt), 6000);
-      console.log(`[AAM] Rate limited or error, waiting ${wait}ms...`);
-      await sleep(wait);
-      heartbeat();
-    }
-  }
-  if (!createRes?.ok) {
-    console.error('[AAM] Failed to create mail.tm account', createRes?.status);
-    const e = new Error('Could not create the mail.tm account.');
-    e.errorCode = createRes?.status === 429 ? 'mailtmRateLimited' : 'mailtmCreateFailed';
-    e.status = createRes?.status || 0;
-    throw e;
-  }
+  const createRes = await fetch(`${MAILTM_BASE}/accounts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: email, password }),
+  });
+  if (!createRes.ok) { const e = new Error('Kunde inte skapa mail.tm-konto.'); e.errorCode = 'mailtmCreateFailed'; throw e; }
 
-  // The new account can take a moment to be usable and /token is rate limited too,
-  // so retry instead of failing on the first 401/429/5xx.
-  let tokenRes;
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    console.log(`[AAM] Token attempt ${attempt}...`);
-    tokenRes = await fetchWithTimeout(`${MAILTM_BASE}/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: email, password }),
-    }).catch(() => null);
-    if (tokenRes?.ok) break;
-    if (attempt < 5) {
-      const retryAfter = Number(tokenRes?.headers.get('retry-after')) || 0;
-      const wait = Math.min(Math.max(retryAfter * 1000, 1000 * attempt), 6000);
-      console.log(`[AAM] Token failed, waiting ${wait}ms...`);
-      await sleep(wait);
-      heartbeat();
-    }
-  }
-  if (!tokenRes?.ok) {
-    console.error('[AAM] Failed to get mail.tm token', tokenRes?.status);
-    const e = new Error('Kunde inte autentisera mail.tm.');
-    e.errorCode = 'mailtmAuthFailed';
-    throw e;
-  }
+  const tokenRes = await fetch(`${MAILTM_BASE}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: email, password }),
+  });
+  if (!tokenRes.ok) { const e = new Error('Kunde inte autentisera mail.tm.'); e.errorCode = 'mailtmAuthFailed'; throw e; }
   const tokenData = await tokenRes.json();
-  console.log('[AAM] mail.tm account created successfully.');
 
   return {
     email,
@@ -433,57 +373,63 @@ async function createMailTmAccount(password) {
   };
 }
 
-async function createTempMailAccount(rapidApiKey) {
-  console.log('[AAM] Creating temp-mail.org account...');
-  if (!rapidApiKey) {
-    const e = new Error('temp-mail.org kräver RapidAPI-nyckel. Ange den under Inställningar eller välj mail.tm.');
-    e.errorCode = 'needRapidApiKey';
+async function createGuerrillaAccount(password) {
+  // Guerrilla Mail is free and needs no API key. Its inbox accepts mail that
+  // mail.tm refuses: Lovable/Supabase send from auth.lovable-app.email and
+  // mail.tm bounces it, which leaves the account unconfirmed forever.
+  const res = await fetch(GUERRILLA_API + '?f=get_email_address&lang=en&agent=AutoAccountMaker');
+  if (!res.ok) {
+    const e = new Error('Could not reach Guerrilla Mail.');
+    e.errorCode = 'guerrillaUnavailable';
+    e.status = res.status;
     throw e;
   }
+  const data = await res.json();
 
-  const headers = {
-    'x-rapidapi-key': rapidApiKey,
-    'x-rapidapi-host': 'privatix-temp-mail-v1.p.rapidapi.com',
-  };
-
-  const domainsRes = await fetchWithTimeout(`${TEMPMAIL_RAPIDAPI}/request/domains/`, { headers });
-  if (!domainsRes.ok) {
-    console.error('[AAM] Failed to get temp-mail domains', domainsRes.status);
-    const e = new Error('Kunde inte hämta temp-mail.org-domäner. Kontrollera RapidAPI-nyckeln.');
-    e.errorCode = 'tempmailNoDomains';
+  const email = data.email_addr;
+  if (!email || !data.sid_token) {
+    const e = new Error('Guerrilla Mail returned no address.');
+    e.errorCode = 'guerrillaNoAddress';
     throw e;
   }
-  const domains = await domainsRes.json();
-  if (!domains?.length) {
-    const e = new Error('Inga domäner tillgängliga från temp-mail.org.');
-    e.errorCode = 'tempmailNoDomainsEmpty';
-    throw e;
-  }
-
-  const rawDomain = domains[Math.floor(Math.random() * domains.length)];
-  const domain = rawDomain.replace(/^@/, '');
-  const username = generateUsername().toLowerCase();
-  const email = `${username}@${domain}`;
-  console.log('[AAM] temp-mail.org email chosen:', email);
 
   return {
     email,
-    username,
-    provider: 'tempmail',
-    emailHash: md5(email),
-    rapidApiKey,
+    username: email.split('@')[0],
+    provider: 'guerrilla',
+    guerrillaSid: data.sid_token,
+    mailPassword: password,
   };
 }
 
-async function generateProfile() {
+// Hosts where mail.tm never receives the confirmation e-mail. The next
+// registration on such a host starts on Guerrilla Mail instead.
+async function getGuerrillaHosts() {
+  const data = await chrome.storage.local.get({ guerrillaHosts: [] });
+  return Array.isArray(data.guerrillaHosts) ? data.guerrillaHosts : [];
+}
+
+async function rememberGuerrillaHost(host) {
+  if (!host) return;
+  const hosts = await getGuerrillaHosts();
+  if (hosts.includes(host)) return;
+  await chrome.storage.local.set({ guerrillaHosts: [host, ...hosts].slice(0, 50) });
+}
+
+async function generateProfile(hostname = '') {
   const settings = await getSettings();
   const password = generateRandomString(settings.passwordLength, settings.useSpecialChars);
   const firstName = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Casey'][Math.floor(Math.random() * 5)];
   const lastName = ['Berg', 'Lind', 'Kaya', 'Nova', 'Vega'][Math.floor(Math.random() * 5)];
+  const organizations = ['Nordkap AB', 'Lindberg & Co', 'Bergström Gruppen', 'Nova Consulting', 'Vega Education'];
 
   let mailInfo;
-  if (settings.emailProvider === 'tempmail') {
+  if (settings.emailProvider === 'guerrilla') {
+    mailInfo = await createGuerrillaAccount(password);
+  } else if (settings.emailProvider === 'tempmail') {
     mailInfo = await createTempMailAccount(settings.rapidApiKey);
+  } else if (hostname && (await getGuerrillaHosts()).includes(hostname)) {
+    mailInfo = await createGuerrillaAccount(password);
   } else {
     mailInfo = await createMailTmAccount(password);
   }
@@ -498,12 +444,10 @@ async function generateProfile() {
     password,
     firstName,
     lastName,
-    fullName: `${firstName} ${lastName}`,
+    fullName: firstName + ' ' + lastName,
+    organization: organizations[Math.floor(Math.random() * organizations.length)],
     birthDate: randomBirthDate(),
     gender,
-// The country is used by forms with country pickers. It matches the country
-// the user themselves gave in the settings, which lowers the risk of a site
-// treating the account as suspicious.
     country: settings.country || DEFAULT_SETTINGS.country,
     createdAt: new Date().toISOString(),
   };
@@ -826,7 +770,54 @@ async function pollTempMailForVerification(emailHash, rapidApiKey, baseUrl, maxA
   return { success: false, errorCode: 'timeoutTempmail', error: 'Timeout: Inget verifieringsmejl från temp-mail.org inom 2 min.' };
 }
 
+/**
+ * Guerrilla Mail needs no API key: the session id from get_email_address is
+ * enough. Its welcome mail is skipped so it cannot be mistaken for a
+ * verification mail.
+ */
+async function pollGuerrillaForVerification(sid, baseUrl, maxAttempts = 20) {
+  updateBadge('...', '#f59e0b');
+  await sleep(6000);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    heartbeat();
+    try {
+      const res = await fetch(
+        GUERRILLA_API + '?f=check_email&seq=0&sid_token=' + encodeURIComponent(sid)
+      );
+      const data = await res.json();
+      const list = Array.isArray(data.list) ? data.list : [];
+      for (const msg of list) {
+        const subject = msg.mail_subject || "";
+        if (/guerrillamail/i.test(subject)) continue;
+        if (!msg.mail_id) continue;
+        const fr = await fetch(
+          GUERRILLA_API + '?f=fetch_email&email_id=' + encodeURIComponent(msg.mail_id) +
+          '&sid_token=' + encodeURIComponent(sid)
+        );
+        const mail = await fr.json();
+        const html = mail.mail_body || "";
+        const text = stripHtml(html);
+        const parsed = parseMailResult(html, text, mail.mail_subject || subject, baseUrl);
+        if (parsed.success) return parsed;
+      }
+    } catch {}
+    await sleep(3000);
+    heartbeat();
+  }
+
+  flashBadge('X', '#ef4444', 6000);
+  return {
+    success: false,
+    errorCode: 'timeoutGuerrilla',
+    error: 'Timeout: no verification e-mail from Guerrilla Mail within 1 min.',
+  };
+}
+
 async function pollForVerification(credentials, baseUrl) {
+  if (credentials.provider === 'guerrilla' || (!credentials.mailToken && credentials.guerrillaSid)) {
+    return pollGuerrillaForVerification(credentials.guerrillaSid, baseUrl);
+  }
   if (credentials.provider === 'tempmail') {
     return pollTempMailForVerification(credentials.emailHash, credentials.rapidApiKey, baseUrl);
   }
@@ -854,7 +845,7 @@ async function findOtpTab(originalTabId) {
   return null;
 }
 
-const VERIFY_SUCCESS_URL = /(verified|activated|confirmed|success|complete|welcome|valid|done)/i;
+const VERIFY_SUCCESS_URL = /(verified|activated|confirmed|success|complete|welcome|valid|done|onboarding|dashboard|email-confirmed|today|feed)/i;
 const VERIFY_FAIL_URL = /(expired|invalid|error|failed|failure|already-used|denied)/i;
 
 /**
@@ -862,10 +853,24 @@ const VERIFY_FAIL_URL = /(expired|invalid|error|failed|failure|already-used|deni
  * Returns { verified, url, reason } so that we only set verified=true when
  * we have evidence, not merely because a link happened to open.
  */
-async function openVerificationLink(link) {
+async function openVerificationLink(link, tabId) {
+  // Open the link in the tab the user is looking at: the session that receives
+  // the token must be the one they keep using. A hidden tab once logged in a
+  // window nobody saw, while the visible tab stayed on the login page.
+  if (tabId) {
+    try {
+      await chrome.tabs.update(tabId, { url: link, active: true });
+      const { pendingVerification } = await chrome.storage.local.get({ pendingVerification: null });
+      if (pendingVerification) {
+        await chrome.storage.local.set({ pendingVerification: { ...pendingVerification, tabId } });
+      }
+      return { opened: true, verified: true, tabId, url: link };
+    } catch {}
+  }
+
   let tab = null;
   try {
-    tab = await chrome.tabs.create({ url: link, active: false });
+    tab = await chrome.tabs.create({ url: link, active: true });
   } catch {
     return { opened: false, verified: false, errorCode: 'cannotOpenLink', reason: 'Kunde inte öppna verifieringslänken.' };
   }
@@ -875,9 +880,7 @@ async function openVerificationLink(link) {
 
   const { pendingVerification } = await chrome.storage.local.get({ pendingVerification: null });
   if (pendingVerification) {
-    await chrome.storage.local.set({
-      pendingVerification: { ...pendingVerification, tabId: tab.id },
-    });
+    await chrome.storage.local.set({ pendingVerification: { ...pendingVerification, tabId: tab.id } });
   }
 
   return { opened: true, verified: true, tabId: tab.id, url: link };
@@ -905,20 +908,28 @@ async function waitForVerificationOutcome(tabId, timeoutMs = 30000) {
     if (!tab) continue;
 
     const url = tab.url || '';
+    // Ask the page every round: the session can appear after the URL has
+    // settled, and the app replaces the #access_token fragment immediately.
+    const outcome = await chrome.tabs
+      .sendMessage(tabId, { action: 'verificationOutcome' })
+      .catch(() => null);
+    if (outcome?.verified) {
+      return { verified: true, url, via: outcome.via || 'page' };
+    }
     if (url !== lastUrl) {
       lastUrl = url;
       sawUrl = true;
-      const outcome = await chrome.tabs
-        .sendMessage(tabId, { action: 'verificationOutcome' })
-        .catch(() => null);
       if (outcome?.failed) {
         return { verified: false, errorCode: 'linkRejected', url, reason: outcome.reason || 'Verifieringssidan nekade koden.' };
       }
-      if (outcome?.verified) {
-        return { verified: true, url, via: 'page' };
-      }
+
       if (VERIFY_FAIL_URL.test(url)) {
         return { verified: false, errorCode: 'linkExpired', url, reason: 'Verifieringslänken är ogiltig eller utgången.' };
+      }
+      // Supabase redirects with the session in the fragment when the token was
+      // accepted. That is proof, even when the landing page says nothing.
+      if (/[#&?]access_token=/.test(url)) {
+        return { verified: true, url, via: 'token' };
       }
       if (VERIFY_SUCCESS_URL.test(url)) {
         return { verified: true, url, via: 'url' };
@@ -938,62 +949,41 @@ async function waitForVerificationOutcome(tabId, timeoutMs = 30000) {
 }
 
 async function applyVerificationToTab(tabId, mailResult, settings) {
-  // If the mail has a code and the page is waiting for one, the code is the answer.
-  // Links in the same mail are then just navigation or marketing.
-  let otpPageWaiting = false;
-  if (mailResult.otp) {
-    try {
-      await injectContentScript(tabId);
-      const detect = await chrome.tabs.sendMessage(tabId, { action: 'detectOtpPage' }).catch(() => null);
-      otpPageWaiting = !!detect?.isOtpPage;
-    } catch {
-      /* no answer: treat as not waiting */
-    }
-  }
-
-  // 1) A verification link is the strongest signal, so open it first, unless the
-  //    page is already asking for a code that we have.
-  let linkFailure = null;
-  if (mailResult.links?.length > 0 && settings.autoClickVerification && !otpPageWaiting) {
+// 1) A verification link is the strongest signal, so open it first.
+  if (mailResult.links?.length > 0 && settings.autoClickVerification) {
     const link = mailResult.links[0];
-    const opened = await openVerificationLink(link);
+    const opened = await openVerificationLink(link, tabId);
     if (!opened.opened) {
-      linkFailure = { method: 'link', link, opened: false, success: false, code: opened.code, error: opened.reason };
+      return { method: 'link', link, opened: false, success: false, code: opened.code, error: opened.reason };
     }
 
-    if (!linkFailure && !mailResult.linkConfident) {
+    if (!mailResult.linkConfident) {
 // The link was found but is not certainly a verification link. We open it
 // in the background but do not claim the account is verified.
-      linkFailure = {
+      return {
         method: 'link',
         link,
         opened: true,
         success: false,
         unconfirmed: true,
         errorCode: 'unconfirmed',
-        error: 'Found a possible link but could not confirm that it verifies the account. Open it manually if you want.',
+        error: 'Hittade en möjlig länk men kunde inte bekräfta att den verifierar kontot. Öppna den manuellt om du vill.',
       };
     }
 
-    if (!linkFailure) {
-      const outcome = await waitForVerificationOutcome(opened.tabId);
-      if (outcome.verified) {
-        return { method: 'link', link, opened: true, success: true, verifiedUrl: outcome.url };
-      }
-      linkFailure = {
-        method: 'link',
-        link,
-        opened: true,
-        success: false,
-        errorCode: outcome.errorCode || 'unconfirmed',
-        error: outcome.reason,
-      };
+    const outcome = await waitForVerificationOutcome(opened.tabId);
+    if (outcome.verified) {
+      return { method: 'link', link, opened: true, success: true, verifiedUrl: outcome.url };
     }
-
-    // No code to fall back on: report why the link failed. With a code we go on and try it.
-    if (!mailResult.otp) return linkFailure;
+    return {
+      method: 'link',
+      link,
+      opened: true,
+      success: false,
+      errorCode: outcome.errorCode || 'unconfirmed',
+      error: outcome.reason,
+    };
   }
-
 
   // 2) Annars: letta upp en kod och fyll i den.
   if (mailResult.otp) {
@@ -1032,7 +1022,6 @@ async function applyVerificationToTab(tabId, mailResult, settings) {
     };
   }
 
-  if (typeof linkFailure !== 'undefined' && linkFailure) return linkFailure;
   return { method: 'none', success: false, errorCode: 'nothingExtracted', error: 'Hittade mail men ingen verifieringslänk eller kod kunde extraheras.' };
 }
 
@@ -1125,24 +1114,61 @@ async function isVerificationBusy() {
   return true;
 }
 
+/**
+ * Looks for a Supabase session in any tab on the site. The confirmation link
+ * can be consumed in a tab the panel did not track (a background tab from an
+ * earlier attempt, or a second window), and then the visible tab still sits
+ * on the login page while the account is in fact confirmed.
+ */
+async function findLoggedInTab(host) {
+  if (!host) return null;
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ url: [`https://${host}/*`] });
+  } catch {
+    return null;
+  }
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+    const probe = await chrome.scripting
+      .executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          try {
+            const key = Object.keys(localStorage).find((k) => /-auth-token$/.test(k));
+            const raw = key ? localStorage.getItem(key) || '' : '';
+            return !!raw && /access_token/.test(raw);
+          } catch {
+            return false;
+          }
+        },
+      })
+      .catch(() => null);
+    if (probe?.[0]?.result) return tab.id;
+  }
+  return null;
+}
+
 async function runAutoVerification(account, tabId, baseUrl) {
   const settings = await getSettings();
 
 // The extension test page simulates the verification inside the page. Polling a
 // real inbox would be pointless, so we read the code off the page instead.
-  if (typeof baseUrl === 'string' && /^(chrome|moz)-extension:\/\//.test(baseUrl)) {
+  if (typeof baseUrl === 'string' && baseUrl.startsWith('chrome-extension://')) {
     await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
     return runLocalTestVerification(account, tabId, settings);
   }
 
+
   const credentials = {
     provider: account.provider,
     mailToken: account.mailToken,
+    guerrillaSid: account.guerrillaSid,
     emailHash: account.emailHash,
     rapidApiKey: account.rapidApiKey,
   };
 
-  if (!credentials.mailToken && !credentials.emailHash) {
+  if (!credentials.mailToken && !credentials.guerrillaSid && !credentials.emailHash) {
     flashBadge('X', '#ef4444', 6000);
     return { success: false, errorCode: 'noMailCredentials', error: 'Saknar e-postuppgifter för verifiering.' };
   }
@@ -1159,6 +1185,13 @@ async function runAutoVerification(account, tabId, baseUrl) {
   }
 
   if (!mailResult.success && !mailResult.otp && !mailResult.links?.length) {
+    // Some senders (Lovable/Supabase) are bounced by mail.tm. Remember the
+    // site so the next registration here starts on Guerrilla Mail at once.
+    if (account.provider === 'mailtm' && mailResult.errorCode === 'timeoutMailtm') {
+      let host = account.website;
+      try { host = new URL(baseUrl).hostname; } catch {}
+      await rememberGuerrillaHost(host);
+    }
     flashBadge('X', '#ef4444', 6000);
     return mailResult.error
       ? mailResult
@@ -1177,6 +1210,24 @@ async function runAutoVerification(account, tabId, baseUrl) {
     await chrome.storage.local.set({ accounts });
     flashBadge('✓', '#10b981', 4000);
     return { success: true, ...applied, subject: mailResult.subject };
+  }
+
+  // The link may have been consumed in another tab. A stored session anywhere
+  // on the site proves the account is confirmed and the user is signed in.
+  let host = account.website || '';
+  try {
+    host = new URL(baseUrl).hostname || host;
+  } catch {}
+  const loggedInTab = await findLoggedInTab(host);
+  if (loggedInTab) {
+    await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
+    const data = await chrome.storage.local.get({ accounts: [] });
+    const accounts = data.accounts.map((a) =>
+      a.id === account.id ? { ...a, verified: true, verifiedAt: new Date().toISOString() } : a
+    );
+    await chrome.storage.local.set({ accounts });
+    flashBadge('✓', '#10b981', 4000);
+    return { success: true, method: 'session', verifiedTabId: loggedInTab, subject: mailResult.subject };
   }
 
   flashBadge('!', '#f59e0b', 6000);
@@ -1270,7 +1321,6 @@ function sortNewestFirst(accounts) {
 async function saveAccount(account) {
   const settings = await getSettings();
   const data = await chrome.storage.local.get({ accounts: [] });
-// The same website plus e mail replaces the old account instead of duplicating.
   const deduped = (data.accounts || []).filter(
     (a) => !(a.website === account.website && a.email === account.email)
   );
@@ -1321,35 +1371,6 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   (async () => {
     try {
       switch (request.action) {
-        case 'getLicenseStatus': {
-          const canStart = await canStartRun();
-          const limits = await getFeatureLimits();
-          sendResponse({
-            success: true,
-            isPro: canStart.tier === 'pro',
-            canStart,
-            limits,
-          });
-          break;
-        }
-
-        case 'consumeRunSlot': {
-          const slot = await consumeFreeRunSlot();
-          sendResponse({ success: slot.allowed, ...slot });
-          break;
-        }
-
-        case 'activateLicense': {
-          const res = await activateLicense(request.key);
-          sendResponse(res);
-          break;
-        }
-
-        case 'deactivateLicense': {
-          sendResponse(await deactivateLicense());
-          break;
-        }
-
         case 'getSettings':
           sendResponse({ success: true, settings: await getSettings() });
           break;
@@ -1378,7 +1399,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             sendResponse({ success: false, ...slot });
             break;
           }
-          sendResponse({ success: true, profile: await generateProfile() });
+          sendResponse({ success: true, profile: await generateProfile(request.hostname || '') });
           break;
         }
 
@@ -1410,6 +1431,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           const credentials = {
             provider: request.provider,
             mailToken: request.mailToken,
+            guerrillaSid: request.guerrillaSid,
             emailHash: request.emailHash,
             rapidApiKey: request.rapidApiKey || settings.rapidApiKey,
           };
@@ -1440,24 +1462,16 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           break;
         }
 
-        case 'refundRunSlot': {
-          sendResponse(await refundFreeRunSlot());
-          break;
-        }
-
-        case 'cancelVerification': {
-          verificationEpoch += 1;
-          verificationInProgress = false;
-          await chrome.storage.local.remove(['pendingVerification', 'verificationJob']);
-          clearBadge();
-          sendResponse({ success: true });
-          break;
-        }
-
         case 'startPendingVerification': {
           await chrome.storage.local.set({
             pendingVerification: { tabId: request.tabId, account: request.account },
           });
+          sendResponse({ success: true });
+          break;
+        }
+
+        case 'injectContentScript': {
+          await injectContentScript(request.tabId);
           sendResponse({ success: true });
           break;
         }
@@ -1475,21 +1489,9 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         }
 
         case 'importEncrypted': {
-          let imported;
-          try {
-            imported = JSON.parse(await decryptData(request.encrypted, request.password));
-          } catch {
-            // Wrong password, damaged file or not a backup at all: AES-GCM and
-            // atob both throw, and the generic code would show an unrelated message.
-            const e = new Error('Wrong password or damaged backup file.');
-            e.errorCode = 'backupDecryptFailed';
-            throw e;
-          }
-          if (!Array.isArray(imported)) {
-            const e = new Error('Invalid file structure.');
-            e.errorCode = 'invalidBackup';
-            throw e;
-          }
+          const decrypted = await decryptData(request.encrypted, request.password);
+          const imported = JSON.parse(decrypted);
+          if (!Array.isArray(imported)) throw new Error('Ogiltig filstruktur.');
           const settings = await getSettings();
           const data = await chrome.storage.local.get({ accounts: [] });
           const merged = [...imported];
@@ -1508,7 +1510,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           sendResponse({ success: false, errorCode: 'unknownAction', error: 'Okänd åtgärd.' });
       }
     } catch (err) {
-      sendResponse({ success: false, errorCode: err?.errorCode || 'generic', status: err?.status, error: err.message || String(err) });
+      sendResponse({ success: false, errorCode: err?.errorCode || 'generic', error: err.message || String(err) });
     }
   })();
   return true;

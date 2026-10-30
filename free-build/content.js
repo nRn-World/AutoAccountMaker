@@ -204,6 +204,7 @@ function findInputs() {
     firstName: null,
     lastName: null,
     fullName: null,
+    organization: null,
     emailConfirm: null,
     country: null,
     birthDate: null,
@@ -284,6 +285,13 @@ function findInputs() {
       /(last|efternamn|familyname|family.?name|surname|apellidos?|nachname|nom\s*de\s*famille|szurname)/i.test(combined)
     ) {
       if (!result.lastName) result.lastName = el;
+    } else if (
+      // Organisation, company or workplace. Usually optional, but leaving it
+      // empty makes the sign-up look half filled.
+      type === 'text' &&
+      /(organi[sz]ation|organisation|company|foretag|företag|firma|arbetsgivare|employer|workplace|arbeitsplatz|empresa|soci[eé]t[eé])/i.test(combined)
+    ) {
+      if (!result.organization) result.organization = el;
     } else if (/full.?name|namn|name/.test(combined) && type === 'text') {
       if (!result.fullName) result.fullName = el;
     }
@@ -337,6 +345,22 @@ function findInputs() {
 }
 
 function findLabelText(input) {
+  // aria-labelledby is the most explicit signal a form can give short of for=.
+  const labelledBy = (input.getAttribute('aria-labelledby') || '').trim();
+  if (labelledBy) {
+    const root = input.getRootNode?.() || document;
+    const text = labelledBy
+      .split(/\s+/)
+      .map((lid) => {
+        try { return root.getElementById?.(lid)?.textContent || document.getElementById(lid)?.textContent || ''; }
+        catch { return ''; }
+      })
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (text) return text;
+  }
+
   if (input.id) {
     // Search inside the same shadow root first: an id is only unique within its tree
     const root = input.getRootNode?.() || document;
@@ -347,8 +371,41 @@ function findLabelText(input) {
     }
     if (label) return label.textContent || '';
   }
+
   const parentLabel = input.closest?.('label');
-  return parentLabel?.textContent || '';
+  if (parentLabel) return parentLabel.textContent || '';
+
+  // Many React form kits (shadcn/ui, Lovable, Tailwind UI) render the label as a
+  // plain sibling inside a small wrapper, with NO for= on the label and NO id,
+  // name or aria-label on the input:
+  //   <div><label>Namn</label><input placeholder="Anna Lindberg" /></div>
+  // Without this the only signal left is the placeholder, the field is never
+  // recognised, and the popup reports it as "otherFields".
+  const wrapper = input.parentElement;
+  if (!wrapper) return '';
+
+  // Only trust the wrapper when it holds this field alone (or nearly alone). In
+  // a big wrapper, such as the form itself, the first label belongs to another
+  // field and would rename this one.
+  const controls = wrapper.querySelectorAll('input, select, textarea').length;
+  if (controls <= 2) {
+    const label = [...wrapper.querySelectorAll('label, legend')].find((l) => !l.contains(input));
+    if (label) {
+      const t = (label.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t && t.length <= 80) return t;
+    }
+    // A plain text element directly above the field (a <span>, <p> or <div>)
+    // counts too, but never one that holds another control or a lot of copy.
+    let prev = input.previousElementSibling;
+    while (prev) {
+      if (!prev.querySelector?.('input, select, textarea, button, a')) {
+        const t = (prev.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t && t.length <= 80) return t;
+      }
+      prev = prev.previousElementSibling;
+    }
+  }
+  return '';
 }
 
 /**
@@ -857,7 +914,7 @@ function isOtpPage() {
 async function fillForm(profile, mode = 'register', autoSubmit = true) {
   injectStyles();
   const fields = findInputs();
-  const filled = { email: false, password: false, username: false, name: false, gender: false, birthDate: false, emailConfirm: false, country: false };
+  const filled = { email: false, password: false, username: false, name: false, organization: false, gender: false, birthDate: false, emailConfirm: false, country: false };
 
   // Fields we found but could not fill. The user needs to know this,
     // otherwise an incomplete filled form looks like everything went well.
@@ -892,9 +949,16 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     setInputValue(fields.lastName, profile.lastName);
     filled.name = true;
   }
-  if (fields.fullName && profile.fullName) {
-    setInputValue(fields.fullName, profile.fullName);
+  // A single full name field. Build the name from the parts when the caller
+  // only sent first and last name, so the field is never left empty.
+  const fullName = profile.fullName || [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+  if (fields.fullName && fullName) {
+    setInputValue(fields.fullName, fullName);
     filled.name = true;
+  }
+  if (fields.organization && profile.organization) {
+    setInputValue(fields.organization, profile.organization);
+    filled.organization = true;
   }
 
   if (fields.gender && profile.gender) {
@@ -969,7 +1033,7 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
     // otherwise the popup would warn about those on every site.
   const known = new Set([
     fields.email, fields.emailConfirm, fields.password, fields.confirmPassword, fields.username,
-    fields.firstName, fields.lastName, fields.fullName, fields.country,
+    fields.firstName, fields.lastName, fields.fullName, fields.organization, fields.country,
     fields.gender, fields.birthDate, fields.birthYear, fields.birthMonth, fields.birthDay,
   ].filter(Boolean));
   const FILLABLE_TYPES = new Set(['text', 'email', 'password', 'tel', 'number', 'date', 'search', 'url', '']);
@@ -1027,13 +1091,13 @@ async function fillForm(profile, mode = 'register', autoSubmit = true) {
 
   // Click the submit button a moment after the fields are filled, so the page
   // has time to react to the input events first.
-  // A registration without an identifier (email or username) filled in would only fail validation
+  // A registration without an e-mail address filled in would only fail validation
   // and leave the extension waiting for a mail that never comes. Leave the form to the user.
-  const identifierMissing = mode === 'register' && !fields.email && !fields.username;
-  if (identifierMissing) missing.push('identifier');
+  const emailMissing = mode === 'register' && !fields.email;
+  if (emailMissing) missing.push('email');
 
   let submitted = false;
-  if (autoSubmit && !identifierMissing) {
+  if (autoSubmit && !emailMissing) {
     const btn = findSubmitButton(mode);
     if (btn) {
       setTimeout(() => btn.click(), 800);
@@ -1094,6 +1158,17 @@ function readVisibleCode() {
  * "expired"/"invalid").
  */
 function verificationOutcome() {
+  // A Supabase session in localStorage means the token was accepted, whatever
+  // route the app lands on (/today, /onboarding, ...). This is stronger than
+  // any wording on the page and works even when the fragment is stripped.
+  try {
+    const key = Object.keys(localStorage).find((k) => /-auth-token$/.test(k));
+    const raw = key ? localStorage.getItem(key) || '' : '';
+    if (raw && /access_token/.test(raw)) {
+      return { verified: true, failed: false, via: 'session' };
+    }
+  } catch {}
+
   const body = (document.body?.innerText || '').toLowerCase();
   const url = location.href.toLowerCase();
 
@@ -1122,6 +1197,18 @@ function verificationOutcome() {
   return { verified: false, failed: false };
 }
 
+/** Text of a visible auth error, e.g. "Invalid login credentials". */
+function readAuthError() {
+  const nodes = document.querySelectorAll(
+    '[role="alert"], [data-sonner-toast], .text-destructive, .text-red-500, .text-red-600'
+  );
+  for (const node of nodes) {
+    const text = (node.textContent || "").replace(/\s+/g, " ").trim();
+    if (text && text.length >= 4 && text.length <= 200) return text;
+  }
+  return "";
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'ping') {
     // We also answer with how many fillable fields are visible right now, so that
@@ -1145,6 +1232,10 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .then((result) => sendResponse({ success: true, result }))
       .catch((err) => sendResponse({ success: false, error: String(err) }));
     return true;
+  }
+  if (request.action === 'authError') {
+    sendResponse({ success: true, error: readAuthError() });
+    return;
   }
   if (request.action === 'fillOtp') {
     sendResponse({

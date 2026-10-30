@@ -1,19 +1,21 @@
 {
   "manifest_version": 3,
   "name": "AutoAccountMaker",
-  "version": "1.13.2",
+  "version": "1.13.3",
   "description": "Creates accounts automatically with a temporary e mail address, verifies them and logs in for you.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
+    "unlimitedStorage",
     "tabs",
+    "windows",
     "sidePanel"
   ],
-  "minimum_chrome_version": "116",
   "host_permissions": [
     "https://api.mail.tm/*",
     "https://privatix-temp-mail-v1.p.rapidapi.com/*",
+    "https://api.guerrillamail.com/*",
     "http://*/*",
     "https://*/*"
   ],
@@ -32,8 +34,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

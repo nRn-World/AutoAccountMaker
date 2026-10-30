@@ -68,7 +68,7 @@ document.getElementById('btnSave')?.addEventListener('click', async () => {
     action: 'saveSettings',
     settings: {
       ...(current?.settings || {}),
-      emailProvider: emailProvider ? emailProvider.value : (current?.settings?.emailProvider || 'mailtm'),
+      emailProvider: emailProvider ? emailProvider.value : (current?.settings?.emailProvider || 'guerrilla'),
       rapidApiKey: rapidApiKey ? rapidApiKey.value.trim() : (current?.settings?.rapidApiKey || ''),
       language: languageSelect ? languageSelect.value : (current?.settings?.language || 'en'),
     },
@@ -84,7 +84,7 @@ async function load() {
 
   buildLanguageOptions(s.language || 'en');
 
-  if (emailProvider) emailProvider.value = s.emailProvider || 'mailtm';
+  if (emailProvider) emailProvider.value = s.emailProvider || 'guerrilla';
   if (rapidApiKey) rapidApiKey.value = s.rapidApiKey || '';
   toggleRapidApi();
 }

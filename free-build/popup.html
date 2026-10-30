@@ -4,371 +4,316 @@
   <meta charset="UTF-8">
   <title>AutoAccountMaker</title>
   <style>
-    :root {
-      --bg: #0b1220;
-      --surface: #111b2e;
-      --surface-2: #17233a;
-      --line: #1f2d46;
-      --text: #f1f5f9;
-      --muted: #8b9bb4;
-      --dim: #5b6b85;
-      --green: #10b981;
-      --green-2: #34d399;
-      --blue: #60a5fa;
-      --amber: #fbbf24;
-      --red: #f87171;
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       width: 100%;
       min-width: 320px;
-      font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-      background:
-        radial-gradient(420px 220px at 100% -10%, rgba(16, 185, 129, 0.16), transparent 70%),
-        var(--bg);
-      color: var(--text);
-      padding: 16px;
-      -webkit-font-smoothing: antialiased;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      padding: 14px;
     }
-    svg { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-
-    /* Header */
-    .header { display: flex; align-items: center; justify-content: center; gap: 11px; margin-bottom: 16px; }
-    .header img { width: 34px; height: 34px; flex: none; }
-    .logo { font-weight: 700; color: var(--text); font-size: 15px; letter-spacing: 0.1px; line-height: 1.2; }
-    .logo span { display: block; }
-    .logo span + span { color: var(--muted); font-weight: 400; font-size: 11.5px; margin-top: 1px; }
-
-    /* Status message */
-    .status {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-left: 3px solid var(--green);
-      border-radius: 10px;
-      padding: 11px 13px;
-      font-size: 12.5px;
-      color: #cbd5e1;
-      margin-bottom: 14px;
-      line-height: 1.5;
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .status.err {
-      border-left-color: var(--red);
-      background: rgba(248, 113, 113, 0.08);
-      color: #fca5a5;
+    .logo { font-weight: 700; color: #10b981; font-size: 15px; }
+    .logo span { color: #94a3b8; font-weight: 400; font-size: 11px; display: block; }
+    .site-badge {
+      font-size: 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 3px 8px;
+      border-radius: 99px;
+      color: #94a3b8;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-
-    /* Buttons */
-    .btn-row { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; margin-bottom: 10px; }
-    button { font-family: inherit; }
-    .btn-row button, .btn-verify {
+    .btn-close {
+      background: none;
       border: none;
-      border-radius: 10px;
-      padding: 11px 10px;
-      font-size: 13px;
+      color: #64748b;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+      margin-left: 6px;
+      flex: none;
+      transition: color 0.15s;
+    }
+    .btn-close:hover { color: #f87171; }
+    .status {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 8px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, transform 0.05s, box-shadow 0.15s;
+      transition: opacity 0.15s;
     }
-    button:active:not(:disabled) { transform: translateY(1px); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-register {
-      background: linear-gradient(180deg, #19c796, #10b981);
-      color: #04211a;
-      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-    }
-    .btn-register:hover:not(:disabled) { background: linear-gradient(180deg, #2bd9a8, #14c08c); }
-    .btn-login {
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid #2a3b5c !important;
-    }
-    .btn-login:hover:not(:disabled) { background: #1d2c47; border-color: #3b5180 !important; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-register { background: #10b981; color: #fff; }
+    .btn-register:hover:not(:disabled) { background: #059669; }
+    .btn-login { background: #3b82f6; color: #fff; }
+    .btn-login:hover:not(:disabled) { background: #2563eb; }
     .btn-verify {
       width: 100%;
-      background: rgba(139, 92, 246, 0.14);
-      color: #c4b5fd;
-      border: 1px solid rgba(139, 92, 246, 0.45) !important;
+      background: #8b5cf6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
       margin-bottom: 10px;
     }
-    .btn-verify:hover:not(:disabled) { background: rgba(139, 92, 246, 0.24); }
-    .btn-reset {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      width: 100%; height: 36px; margin-bottom: 10px;
-      background: transparent; color: var(--muted);
-      border: 1px solid var(--line); border-radius: 10px;
-      font-size: 12.5px; font-weight: 600; cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    .btn-verify:hover:not(:disabled) { background: #7c3aed; }
+    /* Numbered order: 1 register, 2 verify, 3 log in */
+    .btn-register, .btn-verify, .btn-login {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
     }
-    .btn-reset:hover { background: var(--surface); color: var(--text); border-color: #2a3b5c; }
-    .btn-reset svg { font-size: 15px; }
-
-    /* Sponsored card: free version only, always labelled, never opens by itself */
-    .sponsor {
-      position: relative;
-      display: block;
-      margin-top: 12px;
-      padding: 12px 38px 12px 14px;
-      background: var(--surface);
-      border: 1px dashed #2a3b5c;
-      border-radius: 12px;
-      color: var(--text);
-      text-decoration: none;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .sponsor[hidden] { display: none; }
-    .sponsor:hover { border-color: #3b5180; background: #14213a; }
-    .sponsor-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
-    .sponsor-title { display: block; font-size: 13px; font-weight: 600; }
-    .sponsor-text { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.45; margin: 3px 0 8px; }
-    .sponsor-cta { font-size: 12px; font-weight: 600; color: var(--green-2); }
-    .sponsor-close {
-      position: absolute; top: 6px; right: 6px;
-      width: 24px; height: 24px; padding: 0;
-      display: inline-flex; align-items: center; justify-content: center;
-      background: transparent; color: var(--dim); border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
-    }
-    .sponsor-close:hover { background: rgba(148, 163, 184, 0.12); color: var(--text); }
-
-    /* License and free tier */
-    .license {
-      margin-top: 4px;
-      padding: 12px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      font-size: 12px;
-    }
-    .license-status {
+    .btn-register::before,
+    .btn-verify::before,
+    .btn-login::before {
+      content: attr(data-step);
+      flex: 0 0 18px;
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      color: var(--muted);
-      font-size: 11.5px;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .license-status::before {
-      content: '';
-      width: 7px; height: 7px;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
-      background: var(--dim);
-    }
-    .license-status.ready { color: var(--green-2); }
-    .license-status.ready::before { background: var(--green); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
-    .license-status.blocked { color: var(--amber); }
-    .license-status.blocked::before { background: var(--amber); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.18); }
-    .license-status.pro { color: var(--amber); }
-    .license-status.pro::before { background: var(--amber); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.18); }
-    .license-cooldown-text { margin: 0 0 10px; color: var(--amber); font-weight: 600; font-size: 12px; }
-    .license-buy {
-      display: block;
-      text-align: center;
-      background: linear-gradient(180deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.08));
-      color: #fde68a;
-      border: 1px solid rgba(251, 191, 36, 0.4);
-      border-radius: 10px;
-      padding: 9px 10px;
-      font-weight: 600;
-      font-size: 12.5px;
-      text-decoration: none;
-      margin-bottom: 10px;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .license-buy:hover { background: rgba(251, 191, 36, 0.24); border-color: rgba(251, 191, 36, 0.65); }
-    .license-entry summary {
-      cursor: pointer;
-      color: var(--dim);
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
       font-size: 11px;
-      margin-bottom: 7px;
-      list-style: none;
+      font-weight: 700;
+      line-height: 1;
+      vertical-align: middle;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
     }
-    .license-entry summary::-webkit-details-marker { display: none; }
-    .license-input-row { display: flex; gap: 6px; }
-    .license-input-row input {
-      flex: 1;
-      min-width: 0;
-      background: var(--bg);
-      border: 1px solid var(--line);
+    .btn-vault {
+      width: 100%;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      margin-bottom: 8px;
+    }
+    .btn-vault:hover { color: #f1f5f9; border-color: #475569; }
+    .log {
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px;
+      max-height: 110px;
+      overflow-y: auto;
+      display: none;
+    }
+    .log.visible { display: block; }
+    .log-entry { margin-bottom: 3px; }
+    .log-entry.ok { color: #10b981; }
+    .log-entry.err { color: #ef4444; }
+    .log-entry.info { color: #38bdf8; }
+    .creds {
+      display: none;
+      background: #1e293b;
+      border: 1px solid #334155;
       border-radius: 8px;
-      color: #e2e8f0;
-      padding: 8px 10px;
-      font-size: 12px;
-      font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-      outline: none;
-      transition: border-color 0.15s;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 11px;
     }
-    .license-input-row input::placeholder { color: #3f4f6b; }
-    .license-input-row input:focus { border-color: var(--green); }
-    .license-input-row button {
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid #2a3b5c;
-      border-radius: 8px;
-      padding: 8px 13px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      flex: none;
-    }
-    .license-input-row button:hover { background: #1d2c47; border-color: #3b5180; }
-    .license-hint { margin: 7px 0 0; color: var(--dim); font-size: 11px; }
-    .license-hint:empty { display: none; }
-    .license-hint.error { color: var(--red); }
-    .license-hint.success { color: var(--green-2); }
-    .license-pro { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--amber); font-weight: 600; font-size: 12px; }
-    .license-pro > span { display: inline-flex; align-items: center; gap: 7px; }
-    .license-pro > span::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.18); }
-    .license-deactivate {
+    .creds.visible { display: block; }
+    .creds .label { color: #64748b; font-size: 9px; text-transform: uppercase; margin-top: 6px; }
+    .creds .value { word-break: break-all; font-family: monospace; }
+    .footer { margin-top: 10px; text-align: center; }
+    .footer a { color: #64748b; font-size: 10px; text-decoration: none; }
+    .footer a:hover { color: #94a3b8; }
+    .footer-btn {
       background: transparent;
-      color: var(--dim);
-      border: 1px solid var(--line);
+      border: 1px solid transparent;
       border-radius: 8px;
-      padding: 4px 10px;
-      font-size: 11px;
+      font-size: 18px;
+      line-height: 1;
+      padding: 7px 12px;
+      margin: 0 4px;
       cursor: pointer;
+      filter: grayscale(0.5);
     }
-    .license-deactivate:hover { color: var(--red); border-color: #7f1d1d; }
+    .footer-btn:hover { background: #1e293b; border-color: #334155; filter: none; }
+
+    .free-note {
+      display: block;
+      margin-top: 8px;
+      padding: 7px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      font-size: 10px;
+      color: #64748b;
+      text-align: center;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .free-note:hover {
+      color: #e2e8f0;
+      border-color: #10b981;
+    }
 
     /* Step by step view */
     .steps {
       display: none;
-      margin: 12px 0 0;
-      padding: 14px 14px 10px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
+      margin: 10px 0;
+      padding: 10px;
+      background: #0a1120;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
     }
     .steps.visible { display: block; }
     .steps-title {
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--dim);
+      letter-spacing: 0.06em;
+      color: #64748b;
       font-weight: 700;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .step-row {
-      position: relative;
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 5px 0;
-      font-size: 12px;
-      color: var(--dim);
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 11px;
+      color: #475569;
       line-height: 1.3;
     }
-    .step-row:not(:last-child)::after {
-      content: '';
-      position: absolute;
-      left: 8px; top: 22px; bottom: -6px;
-      width: 2px;
-      background: var(--line);
-    }
     .step-dot {
-      position: relative;
-      z-index: 1;
-      width: 18px;
-      height: 18px;
-      flex: 0 0 18px;
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
       border-radius: 50%;
-      background: var(--bg);
-      border: 2px solid #26354f;
+      border: 2px solid #1e293b;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
-      font-weight: 800;
-      color: #04211a;
+      font-size: 8px;
+      font-weight: 700;
+      color: #0f172a;
     }
-    .step-row.active { color: var(--text); font-weight: 600; }
+    .step-row.active { color: #e2e8f0; }
     .step-row.active .step-dot {
-      border-color: var(--blue);
-      background: var(--blue);
-      animation: step-pulse 1.1s ease-in-out infinite;
+      border-color: #3b82f6;
+      background: #3b82f6;
+      animation: step-pulse 1s ease-in-out infinite;
     }
-    .step-row.done { color: #b4c0d4; }
-    .step-row.done .step-dot { border-color: var(--green); background: var(--green); }
-    .step-row.done:not(:last-child)::after { background: rgba(16, 185, 129, 0.5); }
+    .step-row.done { color: #94a3b8; }
+    .step-row.done .step-dot { border-color: #10b981; background: #10b981; }
     .step-row.failed { color: #fca5a5; }
-    .step-row.failed .step-dot { border-color: #ef4444; background: #ef4444; color: #fff; }
+    .step-row.failed .step-dot { border-color: #ef4444; background: #ef4444; }
     @keyframes step-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.5); }
-      50% { box-shadow: 0 0 0 5px rgba(96, 165, 250, 0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+      50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
     }
 
-    /* Log */
-    .log {
-      font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    /* Animated "the extension is working" banner */
+    .working {
+      display: none;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #1d4ed8;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #0b1d3a 0%, #0a1120 100%);
+      animation: working-glow 2s ease-in-out infinite;
+    }
+    .working.visible { display: block; }
+    .working-head { display: flex; align-items: center; gap: 8px; }
+    .working-title { font-size: 12px; font-weight: 700; color: #dbeafe; }
+    .working-elapsed {
+      margin-left: auto;
+      font-family: ui-monospace, monospace;
       font-size: 11px;
-      line-height: 1.5;
-      background: #070d19;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      max-height: 120px;
-      overflow-y: auto;
-      display: none;
-      margin-top: 12px;
+      color: #93c5fd;
+      font-variant-numeric: tabular-nums;
     }
-    .log.visible { display: block; }
-    .log-entry { margin-bottom: 3px; }
-    .log-entry.ok { color: var(--green-2); }
-    .log-entry.err { color: var(--red); }
-    .log-entry.info { color: #7dd3fc; }
-    .log::-webkit-scrollbar { width: 8px; }
-    .log::-webkit-scrollbar-thumb { background: #1f2d46; border-radius: 8px; }
-
-    /* Credentials */
-    .creds {
-      display: none;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-top: 12px;
-      font-size: 12px;
-    }
-    .creds.visible { display: block; }
-    .creds .label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-top: 9px; }
-    .creds .label:first-child { margin-top: 0; }
-    .creds .value { word-break: break-all; font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 12.5px; margin-top: 2px; color: #e2e8f0; }
-
-    /* Footer */
-    .footer { display: flex; justify-content: center; gap: 6px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
-    .footer-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 38px; height: 38px;
+    .working-sub { margin-top: 6px; font-size: 11px; color: #bfdbfe; line-height: 1.4; }
+    .working-close {
+      flex: none;
       background: transparent;
-      color: var(--muted);
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 18px;
+      border: none;
+      border-radius: 4px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1;
+      padding: 0 4px;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .footer-btn:hover { background: var(--surface); border-color: var(--line); color: var(--text); }
-    .footer { gap: 8px; }
-    .footer-btn.labeled {
-      flex: 1;
-      width: auto;
-      gap: 8px;
-      padding: 0 14px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      background: var(--surface);
-      border: 1px solid #2a3b5c;
+    .working-close:hover { color: #e2e8f0; }
+    .working-hint { margin-top: 3px; font-size: 10px; color: #64748b; line-height: 1.4; }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(147, 197, 253, 0.25);
+      border-top-color: #60a5fa;
+      animation: working-spin 0.8s linear infinite;
     }
-    .footer-btn.labeled:hover { background: #1d2c47; border-color: #3b5180; }
-    .footer-btn.labeled svg { font-size: 16px; color: var(--green-2); }
+    .working-bar {
+      margin-top: 8px;
+      height: 4px;
+      border-radius: 99px;
+      background: #1e293b;
+      overflow: hidden;
+    }
+    .working-bar span {
+      display: block;
+      height: 100%;
+      width: 40%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #3b82f6, #22d3ee);
+      animation: working-slide 1.2s ease-in-out infinite;
+    }
+    @keyframes working-spin { to { transform: rotate(360deg); } }
+    @keyframes working-slide {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(260%); }
+    }
+    @keyframes working-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+      50% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .working, .spinner, .working-bar span { animation: none; }
+      .working-bar span { width: 100%; opacity: 0.7; }
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <img src="icons/icon48.png" alt="">
     <div class="logo"><span data-i18n="app.name">AutoAccountMaker</span><span data-i18n="app.tagline">Automatic account registration</span></div>
   </div>
 
@@ -377,60 +322,35 @@
   </div>
 
   <div class="btn-row">
-    <button class="btn-register" id="btnRegister" data-i18n="popup.btnRegister">Register automatically</button>
-    <button class="btn-login" id="btnLogin" data-i18n="popup.btnLogin">Log in</button>
+    <button class="btn-register" id="btnRegister" data-step="1" data-i18n="popup.btnRegister">Register automatically</button>
   </div>
 
-  <button class="btn-verify" id="btnVerify" style="display:none;" data-i18n="popup.btnVerify">Verify code automatically</button>
+  <button class="btn-verify" id="btnVerify" data-step="2" style="display:none;" data-i18n="popup.btnVerify">🔑 Fetch &amp; fill verification code</button>
 
-  <button class="btn-reset" id="btnReset" type="button"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span data-i18n="popup.btnReset">Start over</span></button>
-
-  <div class="license" id="licenseBox">
-    <div class="license-status" id="licenseStatus">
-      <span id="licenseStatusText" data-i18n="popup.licenseFreeReady">Free run available</span>
-    </div>
-
-    <div class="license-cooldown" id="licenseCooldown" style="display:none;">
-      <p class="license-cooldown-text" id="licenseCooldownText"></p>
-    </div>
-
-    <!-- The buy button and the key field sit OUTSIDE the cooldown panel. They
-         used to be hidden until the free time ran out, which meant a customer
-         who had already paid could not see where to enter their key. -->
-      <a class="license-buy" id="btnBuyPro" href="https://ko-fi.com/s/da557f599c" target="_blank" rel="noopener noreferrer">
-      <span data-i18n="popup.licenseBuy">Buy Pro — unlimited use</span>
-    </a>
-
-    <!-- open: the field must be visible straight away, without a click. -->
-    <details class="license-entry" id="licenseEntry" open>
-      <summary data-i18n="popup.licenseHaveKey">Already have a license key?</summary>
-      <div class="license-input-row">
-        <input type="text" id="inputLicenseKey" placeholder="AAM-PRO-XXXX-XXXX-XXXX" maxlength="30" autocomplete="off" spellcheck="false" />
-        <button type="button" id="btnActivateLicense" data-i18n="popup.licenseActivate">Activate</button>
-      </div>
-      <p class="license-hint" id="licenseResult"></p>
-    </details>
-
-    <div class="license-pro" id="licensePro" style="display:none;">
-      <span data-i18n="popup.licenseProActive">Pro active — unlimited use</span>
-      <button type="button" class="license-deactivate" id="btnDeactivateLicense" data-i18n="popup.licenseDeactivate">Remove key</button>
-    </div>
+  <div class="btn-row">
+    <button class="btn-login" id="btnLogin" data-step="3" data-i18n="popup.btnLogin">Log in</button>
   </div>
 
-  <a class="sponsor" id="sponsorCard" href="#" target="_blank" rel="noopener noreferrer sponsored" hidden>
-    <span class="sponsor-tag" data-i18n="popup.sponsorLabel">Sponsored</span>
-    <span class="sponsor-title" data-i18n="popup.sponsorTitle">Partner offer</span>
-    <span class="sponsor-text" data-i18n="popup.sponsorText">Opens an offer from one of our partners in a new tab. It helps keep the free version free.</span>
-    <span class="sponsor-cta" data-i18n="popup.sponsorCta">See offer</span>
-    <button class="sponsor-close" id="sponsorClose" type="button" data-i18n-title="popup.sponsorDismiss" title="Hide" aria-label="Hide"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </a>
+  <div class="working" id="workingBox" role="status" aria-live="polite">
+    <div class="working-head">
+      <span class="spinner" aria-hidden="true"></span>
+      <span class="working-title" data-i18n="popup.workingTitle">Working - please wait</span>
+      <span class="working-elapsed" id="workingElapsed">0:00</span>
+      <button type="button" class="working-close" id="workingClose" title="Dismiss" aria-label="Dismiss">&times;</button>
+    </div>
+    <div class="working-sub" id="workingSub"></div>
+    <div class="working-hint" data-i18n="popup.workingHint"></div>
+    <div class="working-bar" aria-hidden="true"><span></span></div>
+  </div>
+
+  
 
   <div class="steps" id="steps">
     <div class="steps-title" data-i18n="popup.stepsTitle">Progress</div>
     <div class="step-row" data-step="1"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepEmail">Creating a temporary e-mail</span></div>
     <div class="step-row" data-step="2"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepFill">Filling in the form</span></div>
-    <div class="step-row" data-step="3"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSave">Saving the account</span></div>
-    <div class="step-row" data-step="4"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSubmit">Submitting the form</span></div>
+    <div class="step-row" data-step="3"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSubmit">Submitting the form</span></div>
+    <div class="step-row" data-step="4"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepSave">Saving the account</span></div>
     <div class="step-row" data-step="5"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepMail">Waiting for the verification e-mail</span></div>
     <div class="step-row" data-step="6"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepVerify">Entering the verification code</span></div>
     <div class="step-row" data-step="7"><span class="step-dot"></span><span class="step-text" data-i18n="popup.stepDone">Done — you can log in</span></div>
@@ -445,11 +365,9 @@
   </div>
 
   <div class="footer">
-    <button class="footer-btn labeled" id="btnTest" data-i18n-title="popup.btnTest" title="Open test page"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.5L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9.5V3"/><path d="M7.5 15h9"/></svg><span data-i18n="popup.btnTest">Open test page</span></button>
-    <button class="footer-btn" id="btnSettings" data-i18n-title="popup.settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button class="footer-btn" id="btnSettings" data-i18n-title="popup.settings" title="Settings" aria-label="Settings">⚙️</button>
+    <button class="footer-btn" id="btnTest" data-i18n-title="popup.btnTest" title="Open test page">🧪</button>
   </div>
-
-<script src="license.js"></script>
 <script src="i18n.js"></script>
 <script src="popup.js"></script>
 </body>

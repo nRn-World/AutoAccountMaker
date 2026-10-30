@@ -298,40 +298,27 @@ document.getElementById('btnExportPdf')?.addEventListener('click', async () => {
   }
 
   const cols = exportColumns();
+  const esc = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Built with DOM calls, not innerHTML, so account data can never be read as markup.
-  const el = (tag, text, className) => {
-    const node = document.createElement(tag);
-    if (text != null) node.textContent = String(text);
-    if (className) node.className = className;
-    return node;
-  };
-
-  const headRow = el('tr');
-  cols.forEach((c) => headRow.appendChild(el('th', c.label)));
-  const thead = el('thead');
-  thead.appendChild(headRow);
-
-  const tbody = el('tbody');
-  accounts.forEach((acc) => {
+  const head = cols.map((c) => `<th>${esc(c.label)}</th>`).join('');
+  const body = accounts.map((acc) => {
     const row = accountRows(acc);
-    const tr = el('tr');
-    cols.forEach((c) => {
-      const mono = ['password', 'email', 'username'].includes(c.key) ? 'mono' : '';
-      tr.appendChild(el('td', row[c.key] == null ? '' : row[c.key], mono));
-    });
-    tbody.appendChild(tr);
-  });
+    return '<tr>' + cols.map((c) => {
+      const cls = ['password', 'email', 'username'].includes(c.key) ? ' class="mono"' : '';
+      return `<td${cls}>${esc(row[c.key])}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
 
-  const table = el('table');
-  table.append(thead, tbody);
-
-  area.replaceChildren(
-    el('h1', 'AutoAccountMaker'),
-    el('p', `${t('export.pdfSubtitle', accounts.length)} — ${new Date().toLocaleString(I18N.language)}`, 'p-sub'),
-    table,
-    el('p', t('export.warning'), 'p-note')
-  );
+  area.innerHTML = `
+    <h1>AutoAccountMaker</h1>
+    <p class="p-sub">${esc(t('export.pdfSubtitle', accounts.length))} — ${esc(new Date().toLocaleString(I18N.language))}</p>
+    <table>
+      <thead><tr>${head}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <p class="p-note">${esc(t('export.warning'))}</p>
+  `;
 
   showVaultMessage(t('export.pdfHint'), 'ok');
   // Let the layout settle before the dialog opens.
@@ -378,7 +365,7 @@ modalConfirm.addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `autoaccountmaker-backup-${Date.now()}.enc`;
+    a.download = `autaccountmaker-backup-${Date.now()}.enc`;
     a.click();
     URL.revokeObjectURL(url);
     modalMsg.textContent = t('vault.msgExportOk');
