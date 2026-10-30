@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AutoAccountMaker",
-  "version": "1.13.4",
+  "version": "2.1",
   "description": "Creates accounts automatically with a temporary e mail address, verifies them and logs in for you.",
   "permissions": [
     "activeTab",

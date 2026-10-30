@@ -59,7 +59,7 @@ const MANUAL = path.join(ROOT, 'store-manual');
 const OUT = path.join(ROOT, 'store-build');
 
 const SHOP_URL = 'https://ko-fi.com/s/da557f599c';
-const VERSION = '1.13.4';
+const VERSION = '2.1';
 const GECKO_ID = 'autoaccountmaker-form-filler@nrnworld.com';
 
 const problems = [];
